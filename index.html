@@ -159,7 +159,17 @@
         }
         .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
         .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-        .pg-card img{width:100%;display:block;min-height:80px;background:var(--bg)}
+
+        /* === PDF page images — inverted in dark mode === */
+        .pg-card img{
+            width:100%;display:block;min-height:80px;background:var(--bg);
+            filter:invert(1) hue-rotate(180deg);
+            transition:filter .3s,background .3s
+        }
+        :root.light .pg-card img{
+            filter:none
+        }
+
         .sb-btn{
             position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));
             right:16px;width:44px;height:44px;border-radius:50%;
