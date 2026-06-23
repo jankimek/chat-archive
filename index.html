@@ -80,7 +80,8 @@
         .go-btn:active{transform:scale(.97);background:var(--accent-h)}
         .go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-        #ld-screen{
+        /* Initial & Jump Loading Screens */
+        .ld-screen{
             position:fixed;inset:0;display:none;flex-direction:column;
             align-items:center;justify-content:center;background:var(--bg);z-index:90;
             transition:background .3s
@@ -89,6 +90,16 @@
         @keyframes spin{to{transform:rotate(360deg)}}
         .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
         .ld-det{font-size:13px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+        
+        /* Jump Progress Bar */
+        .jump-bar-wrap{
+            width:240px;height:6px;background:var(--border);border-radius:3px;
+            margin-top:20px;overflow:hidden
+        }
+        .jump-bar{
+            height:100%;background:var(--accent);width:0%;
+            transition:width .1s linear
+        }
 
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
         .ch-hdr{
@@ -128,40 +139,27 @@
         
         .ch-scroll{
             flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-            padding:16px 12px 40px;
-            background:var(--bg)
+            padding:16px 12px 40px;background:var(--bg)
         }
         .ch-scroll::-webkit-scrollbar{width:3px}
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-        /* Text Page Styles */
         .text-page{
-            padding:12px 0;
-            border-bottom:1px solid var(--border)
+            padding:12px 0;border-bottom:1px solid var(--border)
         }
         .page-marker{
-            display:inline-block;
-            background:var(--accent);color:#0a0a0a;
+            display:inline-block;background:var(--accent);color:#0a0a0a;
             font-size:10px;font-weight:700;padding:2px 8px;
-            border-radius:4px;margin-bottom:12px;
-            text-transform:uppercase;letter-spacing:.5px
+            border-radius:4px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px
         }
         .chat-line{
-            font-size:14px;line-height:1.6;
-            margin-bottom:6px;color:var(--fg2);
+            font-size:14px;line-height:1.6;margin-bottom:6px;color:var(--fg2);
             word-wrap:break-word;white-space:pre-wrap
         }
-        .chat-line strong{
-            color:var(--fg);font-weight:700;
-            display:inline
-        }
-        .chat-line .timestamp{
-            color:var(--muted);font-size:12px;
-            margin-right:6px;font-weight:400
-        }
+        .chat-line strong{color:var(--fg);font-weight:700;display:inline}
+        .chat-line .timestamp{color:var(--muted);font-size:12px;margin-right:6px;font-weight:400}
 
-        /* Fallback Image Styles (if a page is a scanned photo) */
         .img-page{
             background:var(--card);border:1px solid var(--border);
             border-left:3px solid var(--accent);border-radius:var(--rad);
@@ -173,12 +171,25 @@
             background:rgba(255,255,255,.01);transition:border-color .3s
         }
         .img-page-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
-        .img-page img{
-            width:100%;display:block;min-height:80px;background:var(--bg);
-            transition:filter .3s,background .3s
+        .img-page img{width:100%;display:block;min-height:80px;background:var(--bg);transition:filter .3s,background .3s}
+        :root.light .img-page img{filter:invert(1) hue-rotate(180deg)}
+
+        .ld-trigger{
+            text-align:center;padding:14px;color:var(--muted);font-size:12px;
+            flex-shrink:0;user-select:none
         }
-        :root.light .img-page img{
-            filter:invert(1) hue-rotate(180deg)
+        .mini-sp{
+            display:inline-block;width:16px;height:16px;border:2px solid var(--border);
+            border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+            vertical-align:middle;margin-right:8px
+        }
+        .arc-start{
+            text-align:center;padding:20px;color:var(--muted);font-size:11px;
+            letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0
+        }
+        .arc-start::before,.arc-start::after{
+            content:'';display:inline-block;width:40px;height:1px;
+            background:var(--border);vertical-align:middle;margin:0 12px
         }
 
         .sb-btn{
@@ -204,7 +215,7 @@
 
         @media(prefers-reduced-motion:reduce){
             .pw-card{animation:none}
-            .sp{animation-duration:1.5s}
+            .sp,.mini-sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
         }
     </style>
@@ -215,8 +226,7 @@
         <div class="pw-card">
             <div class="lock-wrap">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
             </div>
             <h1>Chat Archive</h1>
@@ -228,8 +238,7 @@
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                     </svg>
                     <svg id="eye-c" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                        <line x1="1" y1="1" x2="23" y2="23"/>
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
                     </svg>
                 </button>
             </div>
@@ -238,18 +247,26 @@
         </div>
     </div>
 
-    <div id="ld-screen">
+    <!-- Initial Load Screen -->
+    <div class="ld-screen" id="ld-screen">
         <div class="sp"></div>
         <div class="ld-txt" id="ld-txt">Decrypting archive...</div>
         <div class="ld-det" id="ld-det"></div>
+    </div>
+
+    <!-- Jump Load Screen -->
+    <div class="ld-screen" id="jump-screen">
+        <div class="sp"></div>
+        <div class="ld-txt" id="jump-txt">Jumping to page 1...</div>
+        <div class="jump-bar-wrap"><div class="jump-bar" id="jump-bar"></div></div>
+        <div class="ld-det" id="jump-det">0 / 0</div>
     </div>
 
     <div id="chat-view">
         <header class="ch-hdr">
             <div class="hdr-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                 </svg>
             </div>
             <div class="hdr-info">
@@ -289,17 +306,21 @@
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         var PDF_FILE = 'chat.pdf';
-        // Lower scale for fallback images since they are only used if text fails
+        var BATCH    = 100; 
         var IMG_SCALE = 1.5;  
         var JPG_Q     = 0.8; 
 
         var pdf         = null;
         var totalPgs    = 0;
+        var firstPg     = 1;
+        var busy        = false;
+        var atStart     = false;
         var isDark      = true;
         var currentPage = 1;
 
         var $pw      = document.getElementById('pw-screen');
         var $ld      = document.getElementById('ld-screen');
+        var $jumpScr = document.getElementById('jump-screen');
         var $cv      = document.getElementById('chat-view');
         var $pwIn    = document.getElementById('pw-in');
         var $eyeB    = document.getElementById('eye-b');
@@ -309,6 +330,9 @@
         var $goBtn   = document.getElementById('go-btn');
         var $ldTxt   = document.getElementById('ld-txt');
         var $ldDet   = document.getElementById('ld-det');
+        var $jumpTxt = document.getElementById('jump-txt');
+        var $jumpBar = document.getElementById('jump-bar');
+        var $jumpDet = document.getElementById('jump-det');
         var $scroll  = document.getElementById('ch-scroll');
         var $sb      = document.getElementById('sb-btn');
         var $toast   = document.getElementById('toast-el');
@@ -350,60 +374,90 @@
             $eyeC.style.display = show ? 'block' : 'none';
         });
 
-        $pwIn.addEventListener('input', function() {
-            $fErr.textContent = '';
-            $pwIn.classList.remove('shake');
-        });
-
-        $pwIn.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') $goBtn.click();
-        });
+        $pwIn.addEventListener('input', function() { $fErr.textContent = ''; $pwIn.classList.remove('shake'); });
+        $pwIn.addEventListener('keydown', function(e) { if (e.key === 'Enter') $goBtn.click(); });
 
         $goBtn.addEventListener('click', function() {
             var v = $pwIn.value;
-            if (!v) {
-                $fErr.textContent = 'Please enter a password.';
-                $pwIn.classList.add('shake');
-                return;
-            }
-            $fErr.textContent = '';
-            $pwIn.classList.remove('shake');
-            $goBtn.disabled = true;
-            $goBtn.textContent = 'Verifying...';
+            if (!v) { $fErr.textContent = 'Please enter a password.'; $pwIn.classList.add('shake'); return; }
+            $fErr.textContent = ''; $pwIn.classList.remove('shake');
+            $goBtn.disabled = true; $goBtn.textContent = 'Verifying...';
             tryLoad(v);
         });
 
         /* Page Jumper */
         $pgInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.blur(); 
-                jumpToPage(this.value);
-            }
+            if (e.key === 'Enter') { e.preventDefault(); this.blur(); jumpToPage(this.value); }
         });
-
         $pgInput.addEventListener('blur', function() {
-            if (this.value != currentPage) {
-                jumpToPage(this.value);
-            } else {
-                this.value = currentPage; 
-            }
+            if (this.value != currentPage) jumpToPage(this.value);
+            else this.value = currentPage; 
         });
 
         function jumpToPage(target) {
             target = parseInt(target);
             if (isNaN(target) || target < 1 || target > totalPgs) {
                 toast('Enter a valid page (1-' + totalPgs + ')', true);
-                $pgInput.value = currentPage;
-                return;
+                $pgInput.value = currentPage; return;
             }
 
             var el = document.querySelector('[data-pg="' + target + '"]');
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                $pgInput.value = currentPage; 
+            if (el) { el.scrollIntoView({ behavior: 'smooth' }); return; }
+
+            // Must load backwards to reach target
+            if (target < firstPg && !busy) {
+                loadUpTo(target);
+            } else if (busy) {
+                toast('Please wait for current loading to finish', true);
+                $pgInput.value = currentPage;
             }
+        }
+
+        function loadUpTo(target) {
+            busy = true;
+            var totalNeeded = firstPg - target;
+            var done = 0;
+            
+            // Show Jump Progress Screen
+            $jumpTxt.textContent = 'Jumping to page ' + target + '...';
+            $jumpDet.textContent = '0 / ' + totalNeeded;
+            $jumpBar.style.width = '0%';
+            $jumpScr.style.display = 'flex';
+
+            function processNext() {
+                if (firstPg <= target) {
+                    busy = false;
+                    $jumpScr.style.display = 'none';
+                    
+                    var el = document.querySelector('[data-pg="' + target + '"]');
+                    if (el) {
+                        setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 100);
+                    }
+                    return;
+                }
+
+                var newFirst = Math.max(1, firstPg - BATCH);
+                var newLast = firstPg - 1;
+
+                extractChunk(newFirst, newLast, false, function() {
+                    firstPg = newFirst;
+                    
+                    var trig = document.getElementById('ld-trig');
+                    if (firstPg <= 1) {
+                        atStart = true;
+                        if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; }
+                    }
+
+                    done += (newLast - newFirst + 1);
+                    if (done > totalNeeded) done = totalNeeded; // Clamp math
+                    
+                    $jumpDet.textContent = done + ' / ' + totalNeeded;
+                    $jumpBar.style.width = ((done / totalNeeded) * 100) + '%';
+
+                    setTimeout(processNext, 10); // Let UI update
+                });
+            }
+            processNext();
         }
 
         /* Scroll Tracking */
@@ -412,242 +466,184 @@
             var pages = $scroll.querySelectorAll('[data-pg]');
             var current = 1;
             var scrollRect = $scroll.getBoundingClientRect();
-            
             for (var i = 0; i < pages.length; i++) {
                 var rect = pages[i].getBoundingClientRect();
-                if (rect.top <= scrollRect.top + 100) {
-                    current = parseInt(pages[i].getAttribute('data-pg'));
-                } else {
-                    break; 
-                }
+                if (rect.top <= scrollRect.top + 100) current = parseInt(pages[i].getAttribute('data-pg'));
+                else break; 
             }
-            
             if (current !== currentPage) {
                 currentPage = current;
-                if (document.activeElement !== $pgInput) {
-                    $pgInput.value = currentPage;
-                }
+                if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
             }
         }
 
         /* Toast */
         var _tt = null;
         function toast(msg, err) {
-            clearTimeout(_tt);
-            $toast.textContent = msg;
+            clearTimeout(_tt); $toast.textContent = msg;
             $toast.className = 'toast' + (err ? ' t-err' : '');
-            void $toast.offsetHeight;
-            $toast.classList.add('on');
+            void $toast.offsetHeight; $toast.classList.add('on');
             _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
         }
 
-        /* =============================================
-           Load PDF
-           ============================================= */
+        /* Load PDF */
         function tryLoad(pw) {
-            $pw.style.display = 'none';
-            $ld.style.display = 'flex';
-            $ldTxt.textContent = 'Decrypting archive...';
-            $ldDet.textContent = '';
+            $pw.style.display = 'none'; $ld.style.display = 'flex';
+            $ldTxt.textContent = 'Decrypting archive...'; $ldDet.textContent = '';
 
             pdfjsLib.getDocument({ url: PDF_FILE, password: pw })
             .promise.then(function(doc) {
-                pdf = doc;
-                totalPgs = doc.numPages;
-                $pgTotal.textContent = totalPgs;
-                $pgInput.max = totalPgs;
+                pdf = doc; totalPgs = doc.numPages;
+                $pgTotal.textContent = totalPgs; $pgInput.max = totalPgs;
 
-                $ldTxt.textContent = 'Extracting text...';
-                $ldDet.textContent = '0 / ' + totalPgs;
+                var start = Math.max(1, totalPgs - BATCH + 1);
+                var end = totalPgs; firstPg = start; currentPage = end;
 
-                extractFullDocument().then(function() {
-                    $ld.style.display = 'none';
-                    $cv.style.display = 'flex';
-                    
-                    currentPage = totalPgs;
+                $ldTxt.textContent = 'Extracting latest pages...';
+                $ldDet.textContent = '0 / ' + (end - start + 1);
+
+                extractChunk(start, end, true, function() {
+                    $ld.style.display = 'none'; $cv.style.display = 'flex';
                     $pgInput.value = currentPage;
                     $scroll.scrollTop = $scroll.scrollHeight;
                 });
             })
             .catch(function(e) {
-                console.error(e);
-                $ld.style.display = 'none';
-                $pw.style.display = 'flex';
-                $goBtn.disabled = false;
-                $goBtn.textContent = 'Unlock Archive';
-
+                console.error(e); $ld.style.display = 'none'; $pw.style.display = 'flex';
+                $goBtn.disabled = false; $goBtn.textContent = 'Unlock Archive';
                 if (e.name === 'PasswordException') {
-                    $fErr.textContent = 'Wrong password. Please try again.';
-                    $pwIn.classList.add('shake');
-                    $pwIn.value = '';
-                    $pwIn.focus();
+                    $fErr.textContent = 'Wrong password. Please try again.'; $pwIn.classList.add('shake'); $pwIn.value = ''; $pwIn.focus();
                 } else {
-                    $fErr.textContent = 'File not found. Make sure "' + PDF_FILE + '" is uploaded.';
-                    $pwIn.classList.add('shake');
+                    $fErr.textContent = 'File not found. Make sure "' + PDF_FILE + '" is uploaded.'; $pwIn.classList.add('shake');
                 }
             });
         }
 
         /* =============================================
-           Text Extraction & Fallback Image Engine
+           Core Extraction Engine
            ============================================= */
-        function extractFullDocument() {
+        function extractChunk(from, to, isInitial, onComplete) {
+            var count = to - from + 1;
             var done = 0;
-            var cur = 1;
+            var cur = from;
+            var frag = document.createDocumentFragment();
 
             function next() {
-                if (cur > totalPgs) {
-                    return Promise.resolve();
+                if (cur > to) {
+                    if (isInitial) {
+                        $scroll.appendChild(frag);
+                        if (firstPg > 1) {
+                            var t = document.createElement('div'); t.className = 'ld-trigger'; t.id = 'ld-trig'; t.textContent = 'Scroll up to load earlier pages';
+                            $scroll.insertBefore(t, $scroll.firstChild);
+                        } else {
+                            atStart = true; var m = document.createElement('div'); m.className = 'arc-start'; m.textContent = 'Start of Archive';
+                            $scroll.insertBefore(m, $scroll.firstChild);
+                        }
+                    } else {
+                        var trig = document.getElementById('ld-trig');
+                        if (trig) $scroll.insertBefore(frag, trig);
+                        else $scroll.insertBefore(frag, $scroll.firstChild);
+                    }
+                    if (onComplete) onComplete();
+                    return;
                 }
 
-                var num = cur;
-                cur++;
+                var num = cur; cur++;
 
-                return pdf.getPage(num).then(function(page) {
-                    // 1. Try to get text
+                pdf.getPage(num).then(function(page) {
                     return page.getTextContent().then(function(textContent) {
                         var text = parseTextItems(textContent.items);
-                        
                         if (text) {
-                            // Success: Render as fast HTML text
-                            var div = document.createElement('div');
-                            div.className = 'text-page';
-                            div.setAttribute('data-pg', num);
+                            var div = document.createElement('div'); div.className = 'text-page'; div.setAttribute('data-pg', num);
                             div.innerHTML = '<div class="page-marker">Page ' + num + '</div>' + text;
-                            $scroll.appendChild(div);
+                            frag.appendChild(div);
                         } else {
-                            // Fallback: Page is a photo/scanned image. Render to canvas.
-                            return renderImagePage(page, num);
+                            return appendImageToFragment(page, num, frag);
                         }
-
+                    }).then(function() {
                         done++;
-                        $ldDet.textContent = done + ' / ' + totalPgs;
-                        return next();
+                        if (isInitial) $ldDet.textContent = done + ' / ' + count;
+                        next();
                     });
                 }).catch(function(err) {
-                    console.error('Failed page ' + num, err);
-                    done++;
-                    $ldDet.textContent = done + ' / ' + totalPgs;
-                    return next(); 
+                    console.error('Failed page ' + num, err); done++;
+                    if (isInitial) $ldDet.textContent = done + ' / ' + count;
+                    next(); 
                 });
             }
-
-            return next();
+            next();
         }
 
-        /* 
-           Parses raw PDF text items into readable HTML lines.
-           Groups items by Y coordinate to form sentences, 
-           and sorts by X coordinate to fix left-to-right reading order.
-        */
         function parseTextItems(items) {
             if (!items || !items.length) return null;
-
             var lines = {};
             items.forEach(function(item) {
-                var str = item.str.trim();
-                if (!str) return;
-                
-                // Y coordinate defines the line. Round to nearest 2px to group broken words.
+                var str = item.str.trim(); if (!str) return;
                 var y = Math.round(item.transform[5] / 2) * 2;
                 if (!lines[y]) lines[y] = [];
-                
-                lines[y].push({ 
-                    x: item.transform[4], 
-                    text: str 
-                });
+                lines[y].push({ x: item.transform[4], text: str });
             });
 
-            var sortedYs = Object.keys(lines).sort(function(a, b) { return b - a; }); // Top to bottom
+            var sortedYs = Object.keys(lines).sort(function(a, b) { return b - a; });
             if (!sortedYs.length) return null;
 
             var html = '';
             sortedYs.forEach(function(y) {
-                // Sort left to right
                 lines[y].sort(function(a, b) { return a.x - b.x; });
-                
-                // Join words on same line
                 var lineText = lines[y].map(function(t) { return t.text; }).join(' ');
                 
-                // Auto-format chat patterns (e.g., "10/10/23, 10:00 AM - Name: Message")
-                // Makes the timestamp grey and the name bold
-                var formatted = lineText.replace(
-                    /^([\d\/,\s: AMP]+ - )([^:]{1,30}?):\s(.*)/i, 
-                    '<span class="timestamp">$1</span><strong>$2:</strong> $3'
-                );
+                var formatted = lineText.replace(/^([\d\/,\s: AMP]+ - )([^:]{1,30}?):\s(.*)/i, '<span class="timestamp">$1</span><strong>$2:</strong> $3');
+                if (formatted === lineText) formatted = lineText.replace(/^([^:]{1,30}?):\s(.*)/, '<strong>$1:</strong> $2');
                 
-                // Simpler fallback for "Name: Message"
-                if (formatted === lineText) {
-                    formatted = lineText.replace(
-                        /^([^:]{1,30}?):\s(.*)/, 
-                        '<strong>$1:</strong> $2'
-                    );
-                }
-
                 html += '<p class="chat-line">' + formatted + '</p>';
             });
-
             return html;
         }
 
-        /* Fallback for scanned pages */
-        function renderImagePage(page, num) {
+        function appendImageToFragment(page, num, frag) {
             var vp = page.getViewport({ scale: IMG_SCALE });
-            var c = document.createElement('canvas');
-            c.width = Math.floor(vp.width);
-            c.height = Math.floor(vp.height);
-
-            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
-            .promise.then(function() {
-                // Invert colors if in dark mode
+            var c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+            return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function() {
                 if (isDark) {
-                    var ctx = c.getContext('2d');
-                    ctx.globalCompositeOperation = 'difference';
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, c.width, c.height);
-                    ctx.globalCompositeOperation = 'source-over';
+                    var ctx = c.getContext('2d'); ctx.globalCompositeOperation = 'difference'; ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, c.width, c.height); ctx.globalCompositeOperation = 'source-over';
                 }
-
-                var card = document.createElement('div');
-                card.className = 'img-page';
-                card.setAttribute('data-pg', num);
-
-                var head = document.createElement('div');
-                head.className = 'img-page-head';
-                head.innerHTML = '<span class="img-page-tag">Scanned Page ' + num + '</span>';
-
-                var img = document.createElement('img');
-                img.src = c.toDataURL('image/jpeg', JPG_Q);
-
-                card.appendChild(head);
-                card.appendChild(img);
-                $scroll.appendChild(card);
-
-                // Free memory
-                c.width = 0;
-                c.height = 0;
+                var card = document.createElement('div'); card.className = 'img-page'; card.setAttribute('data-pg', num);
+                var head = document.createElement('div'); head.className = 'img-page-head'; head.innerHTML = '<span class="img-page-tag">Scanned Page ' + num + '</span>';
+                var img = document.createElement('img'); img.src = c.toDataURL('image/jpeg', JPG_Q);
+                card.appendChild(head); card.appendChild(img); frag.appendChild(card);
+                c.width = 0; c.height = 0;
             });
         }
 
-        /* Scroll handling */
+        /* Scroll Handling */
         $scroll.addEventListener('scroll', function() {
-            if (!scrollTick) {
-                requestAnimationFrame(function() {
-                    updateCurrentPage();
-                    scrollTick = false;
-                });
-                scrollTick = true;
-            }
-
+            if (!scrollTick) { requestAnimationFrame(function() { updateCurrentPage(); scrollTick = false; }); scrollTick = true; }
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
-            if (fromBot > 600) { $sb.classList.add('on'); }
-            else               { $sb.classList.remove('on'); }
+            if (fromBot > 600) $sb.classList.add('on'); else $sb.classList.remove('on');
+            if (!atStart && !busy && $scroll.scrollTop < 100) loadOlder();
         });
 
-        /* Scroll to bottom */
-        $sb.addEventListener('click', function() {
-            $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' });
-        });
+        function loadOlder() {
+            busy = true;
+            var trig = document.getElementById('ld-trig');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
+
+            var newFirst = Math.max(1, firstPg - BATCH);
+            var newLast = firstPg - 1;
+
+            extractChunk(newFirst, newLast, false, function() {
+                firstPg = newFirst; busy = false;
+                var trig = document.getElementById('ld-trig');
+                if (firstPg <= 1) {
+                    atStart = true; if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; }
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                }
+            });
+        }
+
+        $sb.addEventListener('click', function() { $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' }); });
     </script>
 </body>
 </html>
