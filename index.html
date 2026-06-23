@@ -13,13 +13,15 @@
             --bg:#0a0a0a;--bg2:#111;--card:#161616;
             --accent:#d4a03c;--accent-h:#b8862e;--accent-glow:rgba(212,160,60,.08);
             --fg:#e4e4e4;--fg2:#b0b0b0;--muted:#6a6a6a;
-            --border:#232323;--err:#d94444;--rad:12px
+            --border:#232323;--err:#d94444;--rad:12px;
+            --dot-opacity:.015
         }
         :root.light{
             --bg:#f5f3ef;--bg2:#eae7e1;--card:#ffffff;
             --accent:#b8862e;--accent-h:#9a6f24;--accent-glow:rgba(184,134,46,.1);
             --fg:#1a1a1a;--fg2:#444;--muted:#888;
-            --border:#d8d4ce;--err:#c03030
+            --border:#d8d4ce;--err:#c03030;
+            --dot-opacity:.04
         }
         body{
             font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -28,121 +30,266 @@
             transition:background .3s,color .3s
         }
 
-        #pw-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:100;padding:20px;transition:background .3s}
-        #pw-screen::before{content:'';position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);top:18%;left:50%;transform:translateX(-50%);pointer-events:none}
-        .pw-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px 28px 32px;width:100%;max-width:380px;text-align:center;box-shadow:0 0 80px var(--accent-glow),0 24px 64px rgba(0,0,0,.5);animation:cardIn .5s ease;transition:background .3s,border-color .3s}
+        /* === PASSWORD SCREEN === */
+        #pw-screen{
+            position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+            background:var(--bg);z-index:100;padding:20px;
+            transition:background .3s
+        }
+        #pw-screen::before{
+            content:'';position:absolute;width:420px;height:420px;border-radius:50%;
+            background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);
+            top:18%;left:50%;transform:translateX(-50%);pointer-events:none
+        }
+        .pw-card{
+            position:relative;background:var(--card);border:1px solid var(--border);
+            border-radius:20px;padding:40px 28px 32px;width:100%;max-width:380px;
+            text-align:center;
+            box-shadow:0 0 80px var(--accent-glow),0 24px 64px rgba(0,0,0,.5);
+            animation:cardIn .5s ease;transition:background .3s,border-color .3s
+        }
         @keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
-        .lock-wrap{width:60px;height:60px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;color:var(--accent);background:var(--accent-glow)}
+        .lock-wrap{
+            width:60px;height:60px;border:2px solid var(--accent);border-radius:50%;
+            display:flex;align-items:center;justify-content:center;margin:0 auto 24px;
+            color:var(--accent);background:var(--accent-glow)
+        }
         .pw-card h1{font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
         .pw-card .sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px}
         .inp-wrap{position:relative;margin-bottom:8px}
-        .inp-wrap input{width:100%;padding:14px 48px 14px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--rad);color:var(--fg);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s,background .3s,color .3s}
+        .inp-wrap input{
+            width:100%;padding:14px 48px 14px 16px;background:var(--bg);
+            border:1.5px solid var(--border);border-radius:var(--rad);color:var(--fg);
+            font-size:15px;font-family:inherit;outline:none;
+            transition:border-color .2s,background .3s,color .3s
+        }
         .inp-wrap input:focus{border-color:var(--accent)}
         .inp-wrap input.shake{border-color:var(--err);animation:shake .4s ease}
-        @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
-        .eye-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--muted);cursor:pointer;border-radius:8px}
+        @keyframes shake{
+            0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}
+            40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}
+        }
+        .eye-btn{
+            position:absolute;right:4px;top:50%;transform:translateY(-50%);
+            width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+            background:none;border:none;color:var(--muted);cursor:pointer;border-radius:8px
+        }
         .eye-btn:active{color:var(--fg)}
         .fld-err{color:var(--err);font-size:13px;min-height:28px;line-height:28px;text-align:left;padding-left:4px}
-        .go-btn{width:100%;padding:14px;background:var(--accent);color:#0a0a0a;border:none;border-radius:var(--rad);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .15s,transform .1s;margin-top:4px}
+        .go-btn{
+            width:100%;padding:14px;background:var(--accent);color:#0a0a0a;border:none;
+            border-radius:var(--rad);font-size:15px;font-weight:700;font-family:inherit;
+            cursor:pointer;transition:background .15s,transform .1s;margin-top:4px
+        }
         .go-btn:active{transform:scale(.97);background:var(--accent-h)}
         .go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-        .ld-screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:90;transition:background .3s}
+        /* === LOADING SCREEN === */
+        #ld-screen{
+            position:fixed;inset:0;display:none;flex-direction:column;
+            align-items:center;justify-content:center;background:var(--bg);z-index:90;
+            transition:background .3s
+        }
         .sp{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:24px}
         @keyframes spin{to{transform:rotate(360deg)}}
         .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
-        .ld-det{font-size:13px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
-        .jump-bar-wrap{width:240px;height:6px;background:var(--border);border-radius:3px;margin-top:20px;overflow:hidden}
-        .jump-bar{height:100%;background:var(--accent);width:0%;transition:width .1s linear}
+        .ld-det{font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
 
+        /* === CHAT VIEW === */
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
-        .ch-hdr{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));display:flex;align-items:center;gap:8px;z-index:10;transition:background .3s,border-color .3s}
-        .hdr-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-h));border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#0a0a0a}
+        .ch-hdr{
+            flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
+            padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
+            display:flex;align-items:center;gap:12px;z-index:10;position:relative;
+            transition:background .3s,border-color .3s
+        }
+        .hdr-icon{
+            width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-h));
+            border-radius:10px;display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;color:#0a0a0a
+        }
         .hdr-info{flex:1;min-width:0}
         .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
-        .pg-jumper{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px}
-        .pg-input{width:42px;padding:2px 4px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--fg);font-size:12px;font-family:inherit;text-align:center;outline:none;-moz-appearance:textfield;transition:border-color .2s,background .3s,color .3s}
-        .pg-input::-webkit-inner-spin-button,.pg-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-        .pg-input:focus{border-color:var(--accent)}
-        .pg-jumper-sep{color:var(--muted);font-weight:500}
-        
-        .hdr-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg);flex-shrink:0;transition:background .2s,border-color .2s,transform .1s,color .2s;position:relative}
-        .hdr-btn:active{transform:scale(.9)}
-        .hdr-btn.active{color:var(--accent);border-color:var(--accent)}
-        .hdr-btn .badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--accent);color:#0a0a0a;border-radius:50%;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center}
-        .hdr-btn .badge.show{display:flex}
-
-        .ch-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 12px 40px;background:var(--bg)}
+        .hdr-info span{font-size:12px;color:var(--muted)}
+        .theme-btn{
+            width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+            background:var(--card);display:flex;align-items:center;justify-content:center;
+            cursor:pointer;color:var(--fg);flex-shrink:0;
+            transition:background .2s,border-color .2s,transform .1s
+        }
+        .theme-btn:active{transform:scale(.9)}
+        .ch-scroll{
+            flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+            padding:10px 10px 20px;display:flex;flex-direction:column;gap:10px;
+            background-image:radial-gradient(circle,rgba(255,255,255,var(--dot-opacity)) 1px,transparent 1px);
+            background-size:20px 20px
+        }
         .ch-scroll::-webkit-scrollbar{width:3px}
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-        .text-page{padding:12px 0;border-bottom:1px solid var(--border)}
-        .page-marker{display:inline-block;background:var(--accent);color:#0a0a0a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-        .chat-line{font-size:14px;line-height:1.6;margin-bottom:6px;color:var(--fg2);word-wrap:break-word;white-space:pre-wrap}
-        .chat-line strong{color:var(--fg);font-weight:700;display:inline}
-        .chat-line .timestamp{color:var(--muted);font-size:12px;margin-right:6px;font-weight:400}
+        .ld-trigger{
+            text-align:center;padding:14px;color:var(--muted);font-size:12px;
+            flex-shrink:0;user-select:none
+        }
+        .mini-sp{
+            display:inline-block;width:16px;height:16px;border:2px solid var(--border);
+            border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+            vertical-align:middle;margin-right:8px
+        }
+        .arc-start{
+            text-align:center;padding:20px;color:var(--muted);font-size:11px;
+            letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0
+        }
+        .arc-start::before,.arc-start::after{
+            content:'';display:inline-block;width:40px;height:1px;
+            background:var(--border);vertical-align:middle;margin:0 12px
+        }
+        .pg-card{
+            background:var(--card);border:1px solid var(--border);
+            border-left:3px solid var(--accent);border-radius:var(--rad);
+            overflow:hidden;flex-shrink:0;animation:fadeUp .35s ease both;
+            transition:background .3s,border-color .3s
+        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        .pg-head{
+            padding:6px 12px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;
+            background:rgba(255,255,255,.01);transition:border-color .3s
+        }
+        .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+        .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-        .img-page{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--rad);overflow:hidden;flex-shrink:0;margin-bottom:16px;transition:background .3s,border-color .3s}
-        .img-page-head{padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.01);transition:border-color .3s}
-        .img-page-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
-        .img-page img{width:100%;display:block;min-height:80px;background:var(--bg);transition:filter .3s,background .3s}
-        :root.light .img-page img{filter:invert(1) hue-rotate(180deg)}
+        /* === PDF page images — inverted in dark mode === */
+        .pg-card img{
+            width:100%;display:block;min-height:80px;background:var(--bg);
+            filter:invert(1) hue-rotate(180deg);
+            transition:filter .3s,background .3s
+        }
+        :root.light .pg-card img{
+            filter:none
+        }
 
-        .ld-trigger{text-align:center;padding:14px;color:var(--muted);font-size:12px;flex-shrink:0;user-select:none}
-        .mini-sp{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
-        .arc-start{text-align:center;padding:20px;color:var(--muted);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0}
-        .arc-start::before,.arc-start::after{content:'';display:inline-block;width:40px;height:1px;background:var(--border);vertical-align:middle;margin:0 12px}
-
-        .sb-btn{position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));right:16px;width:44px;height:44px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--fg);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);transition:transform .15s,background .3s,border-color .3s}
+        .sb-btn{
+            position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));
+            right:16px;width:44px;height:44px;border-radius:50%;
+            background:var(--card);border:1px solid var(--border);color:var(--fg);
+            display:none;align-items:center;justify-content:center;cursor:pointer;
+            z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);
+            transition:transform .15s,background .3s,border-color .3s
+        }
         .sb-btn:active{transform:scale(.9);background:var(--border)}
         .sb-btn.on{display:flex}
-
-        /* Resume Pill & Bookmarks Panel */
-        .resume-pill{position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));left:16px;background:var(--card);border:1px solid var(--border);color:var(--fg);padding:0 6px 0 0;border-radius:24px;display:none;align-items:center;gap:8px;z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s,background .3s,border-color .3s}
-        .resume-pill.on{display:flex}
-        .resume-pill:active{transform:scale(.95)}
-        .resume-pill-circle{width:44px;height:44px;border-radius:50%;background:var(--accent);border:none;color:#0a0a0a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .resume-pill-text{padding-right:12px;font-size:12px;font-weight:600;white-space:nowrap}
-
-        .bm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;opacity:0;pointer-events:none;transition:opacity .3s}
-        .bm-overlay.open{opacity:1;pointer-events:auto}
-        .bm-panel{position:fixed;bottom:0;left:0;right:0;height:55%;background:var(--bg2);border-top-left-radius:20px;border-top-right-radius:20px;z-index:50;transform:translateY(100%);transition:transform .3s ease;display:flex;flex-direction:column}
-        .bm-panel.open{transform:translateY(0)}
-        .bm-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0}
-        .bm-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0}
-        .bm-header h3{font-size:16px;font-weight:700}
-        .bm-close{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px}
-        .bm-list{flex:1;overflow-y:auto;padding:12px 20px 40px}
-        .bm-empty{text-align:center;color:var(--muted);margin-top:40px;font-size:14px}
-        .bm-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--rad);margin-bottom:10px;cursor:pointer;transition:background .2s,transform .1s}
-        .bm-item:active{transform:scale(.98);background:var(--border)}
-        .bm-item-info{display:flex;flex-direction:column;gap:2px}
-        .bm-item-pg{font-weight:700;font-size:15px}
-        .bm-item-lbl{font-size:12px;color:var(--muted)}
-        .bm-item-del{background:none;border:none;color:var(--err);cursor:pointer;padding:8px}
-
-        .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);color:var(--fg);padding:10px 20px;border-radius:10px;font-size:13px;z-index:200;transition:transform .3s ease,background .3s,border-color .3s,color .3s;white-space:nowrap;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+        .toast{
+            position:fixed;bottom:80px;left:50%;
+            transform:translateX(-50%) translateY(80px);
+            background:var(--card);border:1px solid var(--border);color:var(--fg);
+            padding:10px 20px;border-radius:10px;font-size:13px;z-index:200;
+            transition:transform .3s ease,background .3s,border-color .3s,color .3s;
+            white-space:nowrap;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)
+        }
         .toast.on{transform:translateX(-50%) translateY(0)}
         .toast.t-err{border-color:var(--err);color:var(--err)}
 
-        @media(prefers-reduced-motion:reduce){.pw-card{animation:none}.sp,.mini-sp{animation-duration:1.5s}.inp-wrap input.shake{animation:none}.bm-panel{transition:none}.bm-overlay{transition:none}}
+        /* === MENU & BOOKMARKS === */
+        .menu-dd {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            width: 280px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--rad);
+            box-shadow: 0 12px 32px rgba(0,0,0,.5);
+            z-index: 15;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background .3s, border-color .3s;
+        }
+        .menu-dd.on { display: flex; }
+        .jmp-wrap {
+            display: flex;
+            padding: 10px;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .jmp-wrap input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: inherit;
+            outline: none;
+            font-size: 14px;
+            transition: border-color .2s, background .3s, color .3s;
+        }
+        .jmp-wrap input:focus { border-color: var(--accent); }
+        .jmp-wrap button {
+            background: var(--accent);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 8px;
+            padding: 0 16px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background .15s, transform .1s;
+        }
+        .jmp-wrap button:active { background: var(--accent-h); transform: scale(.97); }
+        .bm-list {
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .bm-list::-webkit-scrollbar { width: 4px; }
+        .bm-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .bm-item {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--fg2);
+            cursor: pointer;
+            transition: background .15s, color .15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bm-item:hover { background: var(--bg2); color: var(--fg); }
+        .bm-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+        @media(prefers-reduced-motion:reduce){
+            .pw-card,.pg-card{animation:none}
+            .sp,.mini-sp{animation-duration:1.5s}
+            .inp-wrap input.shake{animation:none}
+        }
     </style>
 </head>
 <body>
 
+    <!-- ========== PASSWORD SCREEN ========== -->
     <div id="pw-screen">
         <div class="pw-card">
             <div class="lock-wrap">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
             </div>
             <h1>Chat Archive</h1>
             <p class="sub">This archive is password-protected. Enter the correct password to view the messages inside.</p>
             <div class="inp-wrap">
                 <input type="password" id="pw-in" placeholder="Enter password" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 <button class="eye-btn" id="eye-b" type="button" aria-label="Toggle password visibility">
-                    <svg id="eye-o" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <svg id="eye-c" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <svg id="eye-o" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg id="eye-c" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
                 </button>
             </div>
             <div class="fld-err" id="fld-err"></div>
@@ -150,301 +297,561 @@
         </div>
     </div>
 
-    <div class="ld-screen" id="ld-screen">
+    <!-- ========== LOADING SCREEN ========== -->
+    <div id="ld-screen">
         <div class="sp"></div>
         <div class="ld-txt" id="ld-txt">Decrypting archive...</div>
         <div class="ld-det" id="ld-det"></div>
     </div>
 
-    <div class="ld-screen" id="jump-screen">
-        <div class="sp"></div>
-        <div class="ld-txt" id="jump-txt">Jumping to page 1...</div>
-        <div class="jump-bar-wrap"><div class="jump-bar" id="jump-bar"></div></div>
-        <div class="ld-det" id="jump-det">0 / 0</div>
-    </div>
-
+    <!-- ========== CHAT VIEW ========== -->
     <div id="chat-view">
         <header class="ch-hdr">
             <div class="hdr-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
             </div>
             <div class="hdr-info">
                 <h2>Chat Archive</h2>
-                <div class="pg-jumper">
-                    <input type="number" id="pg-input" value="1" min="1" class="pg-input" inputmode="numeric">
-                    <span class="pg-jumper-sep">/</span>
-                    <span id="pg-total">0</span>
-                </div>
+                <span id="hdr-meta">Loading...</span>
             </div>
-            
-            <!-- Bookmark Button -->
-            <button class="hdr-btn" id="bm-btn" aria-label="Bookmarks">
-                <div class="badge" id="bm-badge">0</div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <button class="theme-btn" id="menu-b" aria-label="Bookmarks and Jump to Page">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+            </button>
+            <button class="theme-btn" id="theme-b" aria-label="Toggle theme">
+                <svg id="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg id="ico-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
             </button>
 
-            <!-- Theme Button -->
-            <button class="hdr-btn" id="theme-b" aria-label="Toggle theme">
-                <svg id="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                <svg id="ico-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            </button>
+            <!-- Dropdown Menu -->
+            <div id="menu-dd" class="menu-dd">
+                <div class="jmp-wrap">
+                    <input type="number" id="jmp-in" placeholder="Jump to page" min="1">
+                    <button id="jmp-go">Go</button>
+                </div>
+                <div id="bm-list" class="bm-list"></div>
+            </div>
         </header>
         <div class="ch-scroll" id="ch-scroll"></div>
-        
-        <!-- Resume Pill -->
-        <div class="resume-pill" id="resume-pill">
-            <div class="resume-pill-text" id="resume-txt">Resume page 1</div>
-            <div class="resume-pill-circle">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            </div>
-        </div>
-
-        <!-- Scroll to bottom -->
         <button class="sb-btn" id="sb-btn" aria-label="Scroll to latest messages">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
         </button>
     </div>
 
-    <!-- Bookmark Panel -->
-    <div class="bm-overlay" id="bm-overlay"></div>
-    <div class="bm-panel" id="bm-panel">
-        <div class="bm-handle"></div>
-        <div class="bm-header">
-            <h3>Bookmarks</h3>
-            <button class="bm-close" id="bm-close" aria-label="Close">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-        </div>
-        <div class="bm-list" id="bm-list"></div>
-    </div>
-
+    <!-- Toast -->
     <div class="toast" id="toast-el"></div>
 
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        /* =============================================
+           PDF.js worker setup
+           ============================================= */
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        var PDF_FILE = 'chat.pdf'; var BATCH = 100; var IMG_SCALE = 1.5; var JPG_Q = 0.8; 
-        var pdf = null, totalPgs = 0, firstPg = 1, busy = false, atStart = false, isDark = true, currentPage = 1;
+        /* =============================================
+           CONFIGURATION
+           ============================================= */
+        var PDF_FILE    = 'chat.pdf';
+        var BATCH       = 50;
+        var SCALE       = 1.2;
+        var JPG_Q       = 0.85;
 
-        var $pw = document.getElementById('pw-screen'), $ld = document.getElementById('ld-screen'), $jumpScr = document.getElementById('jump-screen'), $cv = document.getElementById('chat-view');
-        var $pwIn = document.getElementById('pw-in'), $eyeB = document.getElementById('eye-b'), $eyeO = document.getElementById('eye-o'), $eyeC = document.getElementById('eye-c');
-        var $fErr = document.getElementById('fld-err'), $goBtn = document.getElementById('go-btn'), $ldTxt = document.getElementById('ld-txt'), $ldDet = document.getElementById('ld-det');
-        var $jumpTxt = document.getElementById('jump-txt'), $jumpBar = document.getElementById('jump-bar'), $jumpDet = document.getElementById('jump-det');
-        var $scroll = document.getElementById('ch-scroll'), $sb = document.getElementById('sb-btn'), $toast = document.getElementById('toast-el');
-        var $themeB = document.getElementById('theme-b'), $icoSun = document.getElementById('ico-sun'), $icoMoon = document.getElementById('ico-moon');
-        var $pgInput = document.getElementById('pg-input'), $pgTotal = document.getElementById('pg-total');
-        var $bmBtn = document.getElementById('bm-btn'), $bmBadge = document.getElementById('bm-badge');
-        var $bmPanel = document.getElementById('bm-panel'), $bmOverlay = document.getElementById('bm-overlay'), $bmList = document.getElementById('bm-list'), $bmClose = document.getElementById('bm-close');
-        var $resumePill = document.getElementById('resume-pill'), $resumeTxt = document.getElementById('resume-txt');
+        /* =============================================
+           App state
+           ============================================= */
+        var pdf        = null;
+        var totalPgs   = 0;
+        var firstPg    = 1;
+        var lastPg     = 1;      // Track the last loaded page (for downward scrolling)
+        var busy       = false;
+        var atStart    = false;
+        var atEnd      = false;
 
-        /* Theme */
+        /* =============================================
+           DOM handles
+           ============================================= */
+        var $pw     = document.getElementById('pw-screen');
+        var $ld     = document.getElementById('ld-screen');
+        var $cv     = document.getElementById('chat-view');
+        var $pwIn   = document.getElementById('pw-in');
+        var $eyeB   = document.getElementById('eye-b');
+        var $eyeO   = document.getElementById('eye-o');
+        var $eyeC   = document.getElementById('eye-c');
+        var $fErr   = document.getElementById('fld-err');
+        var $goBtn  = document.getElementById('go-btn');
+        var $ldTxt  = document.getElementById('ld-txt');
+        var $ldDet  = document.getElementById('ld-det');
+        var $scroll = document.getElementById('ch-scroll');
+        var $meta   = document.getElementById('hdr-meta');
+        var $sb     = document.getElementById('sb-btn');
+        var $toast  = document.getElementById('toast-el');
+
+        var $menuB  = document.getElementById('menu-b');
+        var $menuDd = document.getElementById('menu-dd');
+        var $jmpIn  = document.getElementById('jmp-in');
+        var $jmpGo  = document.getElementById('jmp-go');
+        var $bmList = document.getElementById('bm-list');
+
+        /* =============================================
+           Theme toggle
+           ============================================= */
+        var $themeB  = document.getElementById('theme-b');
+        var $icoSun  = document.getElementById('ico-sun');
+        var $icoMoon = document.getElementById('ico-moon');
+        var isDark   = true;
+
         var saved = localStorage.getItem('chat-arc-theme');
-        if (saved === 'light') { isDark = false; document.documentElement.classList.add('light'); $icoSun.style.display = 'none'; $icoMoon.style.display = 'block'; }
+        if (saved === 'light') {
+            isDark = false;
+            document.documentElement.classList.add('light');
+            $icoSun.style.display  = 'none';
+            $icoMoon.style.display = 'block';
+        }
+
         $themeB.addEventListener('click', function() {
             isDark = !isDark;
-            if (isDark) { document.documentElement.classList.remove('light'); $icoSun.style.display = 'block'; $icoMoon.style.display = 'none'; localStorage.setItem('chat-arc-theme', 'dark'); }
-            else { document.documentElement.classList.add('light'); $icoSun.style.display = 'none'; $icoMoon.style.display = 'block'; localStorage.setItem('chat-arc-theme', 'light'); }
+            if (isDark) {
+                document.documentElement.classList.remove('light');
+                $icoSun.style.display  = 'block';
+                $icoMoon.style.display = 'none';
+                localStorage.setItem('chat-arc-theme', 'dark');
+            } else {
+                document.documentElement.classList.add('light');
+                $icoSun.style.display  = 'none';
+                $icoMoon.style.display = 'block';
+                localStorage.setItem('chat-arc-theme', 'light');
+            }
         });
 
-        /* Password */
-        $eyeB.addEventListener('click', function() { var s = $pwIn.type === 'password'; $pwIn.type = s ? 'text' : 'password'; $eyeO.style.display = s ? 'none' : 'block'; $eyeC.style.display = s ? 'block' : 'none'; });
-        $pwIn.addEventListener('input', function() { $fErr.textContent = ''; $pwIn.classList.remove('shake'); });
-        $pwIn.addEventListener('keydown', function(e) { if (e.key === 'Enter') $goBtn.click(); });
+        /* =============================================
+           Password screen interactions
+           ============================================= */
+        $eyeB.addEventListener('click', function() {
+            var show = $pwIn.type === 'password';
+            $pwIn.type = show ? 'text' : 'password';
+            $eyeO.style.display = show ? 'none' : 'block';
+            $eyeC.style.display = show ? 'block' : 'none';
+        });
+
+        $pwIn.addEventListener('input', function() {
+            $fErr.textContent = '';
+            $pwIn.classList.remove('shake');
+        });
+
+        $pwIn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') $goBtn.click();
+        });
+
         $goBtn.addEventListener('click', function() {
             var v = $pwIn.value;
-            if (!v) { $fErr.textContent = 'Please enter a password.'; $pwIn.classList.add('shake'); return; }
-            $fErr.textContent = ''; $pwIn.classList.remove('shake'); $goBtn.disabled = true; $goBtn.textContent = 'Verifying...'; tryLoad(v);
+            if (!v) {
+                $fErr.textContent = 'Please enter a password.';
+                $pwIn.classList.add('shake');
+                return;
+            }
+            $fErr.textContent = '';
+            $pwIn.classList.remove('shake');
+            $goBtn.disabled = true;
+            $goBtn.textContent = 'Verifying...';
+            tryLoad(v);
         });
 
-        /* Bookmarks Logic */
-        function getBookmarks() { var b = localStorage.getItem('chat-arc-bookmarks'); return b ? JSON.parse(b) : []; }
-        function saveBookmarks(arr) { localStorage.setItem('chat-arc-bookmarks', JSON.stringify(arr)); updateBadge(); }
-        function updateBadge() { var b = getBookmarks(); if(b.length > 0) { $bmBadge.textContent = b.length; $bmBadge.classList.add('show'); } else { $bmBadge.classList.remove('show'); } }
-        function updateBookmarkIcon() { var b = getBookmarks(); if (b.indexOf(currentPage) > -1) $bmBtn.classList.add('active'); else $bmBtn.classList.remove('active'); }
-        
-        function toggleBookmark() {
-            var bookmarks = getBookmarks();
-            var idx = bookmarks.indexOf(currentPage);
-            if (idx > -1) { bookmarks.splice(idx, 1); toast('Bookmark removed', false); }
-            else { bookmarks.push(currentPage); bookmarks.sort(function(a,b){return a-b;}); toast('Page ' + currentPage + ' bookmarked', false); }
-            saveBookmarks(bookmarks); updateBookmarkIcon();
-        }
-
-        function renderBookmarks() {
-            $bmList.innerHTML = '';
-            var bookmarks = getBookmarks();
-            if (bookmarks.length === 0) { $bmList.innerHTML = '<div class="bm-empty">No bookmarks yet.<br>Tap the bookmark icon to add one.</div>'; return; }
-            for (var i = 0; i < bookmarks.length; i++) {
-                (function(pg) {
-                    var item = document.createElement('div'); item.className = 'bm-item';
-                    item.innerHTML = '<div class="bm-item-info"><div class="bm-item-pg">Page ' + pg + '</div><div class="bm-item-lbl">Jump to page</div></div><button class="bm-item-del" aria-label="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
-                    item.addEventListener('click', function(e) {
-                        if (e.target.closest('.bm-item-del')) {
-                            var b = getBookmarks(); b.splice(b.indexOf(pg), 1); saveBookmarks(b); renderBookmarks(); updateBookmarkIcon(); toast('Bookmark removed', false); return;
-                        }
-                        closeBmPanel(); jumpToPage(pg);
-                    });
-                    $bmList.appendChild(item);
-                })(bookmarks[i]);
-            }
-        }
-
-        function openBmPanel() { renderBookmarks(); $bmOverlay.classList.add('open'); $bmPanel.classList.add('open'); }
-        function closeBmPanel() { $bmOverlay.classList.remove('open'); $bmPanel.classList.remove('open'); }
-
-        $bmBtn.addEventListener('click', function(e) {
-            if (e.detail === 0) return; // Prevent double firing
-            if ($bmPanel.classList.contains('open')) closeBmPanel();
-            else openBmPanel();
+        /* =============================================
+           Menu, Page Jump & Bookmarks
+           ============================================= */
+        $menuB.addEventListener('click', function(e) {
+            e.stopPropagation();
+            $menuDd.classList.toggle('on');
         });
-        $bmOverlay.addEventListener('click', closeBmPanel);
-        $bmClose.addEventListener('click', closeBmPanel);
 
-        /* Page Jumper */
-        $pgInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); jumpToPage(this.value); } });
-        $pgInput.addEventListener('blur', function() { if (this.value != currentPage) jumpToPage(this.value); else this.value = currentPage; });
-
-        function jumpToPage(target) {
-            closeBmPanel(); $resumePill.classList.remove('on'); // Hide resume pill if manually jumping
-            target = parseInt(target);
-            if (isNaN(target) || target < 1 || target > totalPgs) { toast('Enter a valid page (1-' + totalPgs + ')', true); $pgInput.value = currentPage; return; }
-            var el = document.querySelector('[data-pg="' + target + '"]');
-            if (el) { el.scrollIntoView({ behavior: 'smooth' }); updateBookmarkIcon(); return; }
-            if (target < firstPg && !busy) { loadUpTo(target); }
-            else if (busy) { toast('Please wait for current loading to finish', true); $pgInput.value = currentPage; }
-        }
-
-        function loadUpTo(target) {
-            busy = true; var endPg = firstPg - 1; firstPg = target; var totalNeeded = endPg - target + 1; var done = 0; var curStart = target;
-            $jumpTxt.textContent = 'Jumping to page ' + target + '...'; $jumpDet.textContent = '0 / ' + totalNeeded; $jumpBar.style.width = '0%'; $jumpScr.style.display = 'flex';
-            function processNext() {
-                if (curStart > endPg) { busy = false; setTimeout(function() { var el = document.querySelector('[data-pg="' + target + '"]'); if (el) el.scrollIntoView({ behavior: 'auto' }); $jumpScr.style.display = 'none'; updateBookmarkIcon(); }, 50); return; }
-                var newFirst = curStart; var newLast = Math.min(curStart + BATCH - 1, endPg);
-                extractChunk(newFirst, newLast, false, function() {
-                    curStart = newLast + 1; var trig = document.getElementById('ld-trig');
-                    if (newFirst <= 1) { atStart = true; if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; } }
-                    done += (newLast - newFirst + 1); $jumpDet.textContent = done + ' / ' + totalNeeded; $jumpBar.style.width = ((done / totalNeeded) * 100) + '%';
-                    setTimeout(processNext, 10);
-                });
+        document.addEventListener('click', function(e) {
+            if (!$menuDd.contains(e.target) && e.target !== $menuB && !$menuB.contains(e.target)) {
+                $menuDd.classList.remove('on');
             }
-            processNext();
-        }
+        });
 
-        /* Scroll Tracking & Last Read Marker */
-        var scrollTick = false;
-        function updateCurrentPage() {
-            var el = document.elementFromPoint(window.innerWidth / 2, 150); if (!el) return;
-            var pageEl = el.closest('[data-pg]');
-            if (pageEl) {
-                var pg = parseInt(pageEl.getAttribute('data-pg'));
-                if (pg !== currentPage) {
-                    currentPage = pg;
-                    if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
-                    localStorage.setItem('chat-arc-last-page', currentPage); // SAVE LAST READ
-                    updateBookmarkIcon();
-                }
-            } else if ($scroll.scrollTop < 50) { currentPage = firstPg; if (document.activeElement !== $pgInput) $pgInput.value = currentPage; }
-        }
+        $jmpGo.addEventListener('click', function() {
+            var pg = parseInt($jmpIn.value, 10);
+            if (!isNaN(pg)) {
+                goToPage(pg);
+                $menuDd.classList.remove('on');
+                $jmpIn.value = '';
+            }
+        });
 
-        var _tt = null;
-        function toast(msg, err) { clearTimeout(_tt); $toast.textContent = msg; $toast.className = 'toast' + (err ? ' t-err' : ''); void $toast.offsetHeight; $toast.classList.add('on'); _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500); }
+        $jmpIn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') $jmpGo.click();
+        });
 
-        /* Load PDF */
-        function tryLoad(pw) {
-            $pw.style.display = 'none'; $ld.style.display = 'flex'; $ldTxt.textContent = 'Decrypting archive...'; $ldDet.textContent = '';
-            pdfjsLib.getDocument({ url: PDF_FILE, password: pw }).promise.then(function(doc) {
-                pdf = doc; totalPgs = doc.numPages; $pgTotal.textContent = totalPgs; $pgInput.max = totalPgs;
-                var start = Math.max(1, totalPgs - BATCH + 1); var end = totalPgs; firstPg = start; currentPage = end;
-                $ldTxt.textContent = 'Extracting latest pages...'; $ldDet.textContent = '0 / ' + (end - start + 1);
-                extractChunk(start, end, true, function() {
-                    $ld.style.display = 'none'; $cv.style.display = 'flex'; $pgInput.value = currentPage; $scroll.scrollTop = $scroll.scrollHeight;
-                    updateBadge(); updateBookmarkIcon();
-                    
-                    // Check for Last Read Marker
-                    var lastPage = parseInt(localStorage.getItem('chat-arc-last-page'));
-                    if (lastPage && lastPage !== currentPage && lastPage >= 1 && lastPage <= totalPgs) {
-                        $resumeTxt.textContent = 'Resume page ' + lastPage;
-                        $resumePill.classList.add('on');
+        function buildBookmarksMenu(outline, level) {
+            level = level || 0;
+            var frag = document.createDocumentFragment();
+
+            outline.forEach(function(item) {
+                var el = document.createElement('div');
+                el.className = 'bm-item';
+                el.style.paddingLeft = (16 + level * 12) + 'px';
+                el.textContent = item.title || 'Untitled';
+
+                el.addEventListener('click', function() {
+                    if (item.dest) {
+                        navigateToDest(item.dest);
+                    } else if (item.url) {
+                        window.open(item.url, '_blank');
                     }
+                    $menuDd.classList.remove('on');
+                });
+
+                frag.appendChild(el);
+
+                if (item.items && item.items.length > 0) {
+                    var childFrag = buildBookmarksMenu(item.items, level + 1);
+                    frag.appendChild(childFrag);
+                }
+            });
+
+            return frag;
+        }
+
+        function navigateToDest(dest) {
+            var promise;
+            if (typeof dest === 'string') {
+                promise = pdf.getDestination(dest);
+            } else {
+                promise = Promise.resolve(dest);
+            }
+
+            promise.then(function(explicitDest) {
+                if (!explicitDest || !explicitDest[0]) return;
+                // explicitDest[0] is a page reference object
+                pdf.getPageIndex(explicitDest[0]).then(function(pageIndex) {
+                    goToPage(pageIndex + 1); // PDF.js uses 0-indexed pages
                 });
             }).catch(function(e) {
-                console.error(e); $ld.style.display = 'none'; $pw.style.display = 'flex'; $goBtn.disabled = false; $goBtn.textContent = 'Unlock Archive';
-                if (e.name === 'PasswordException') { $fErr.textContent = 'Wrong password. Please try again.'; $pwIn.classList.add('shake'); $pwIn.value = ''; $pwIn.focus(); }
-                else { $fErr.textContent = 'File not found. Make sure "' + PDF_FILE + '" is uploaded.'; $pwIn.classList.add('shake'); }
+                console.error("Failed to navigate to destination", e);
+                toast("Failed to jump to bookmark", true);
             });
         }
 
-        $resumePill.addEventListener('click', function() { jumpToPage(localStorage.getItem('chat-arc-last-page')); });
+        function goToPage(targetPg) {
+            targetPg = parseInt(targetPg, 10);
+            if (isNaN(targetPg)) return;
+            targetPg = Math.max(1, Math.min(totalPgs, targetPg));
 
-        /* Extract Engine */
-        function extractChunk(from, to, isInitial, onComplete) {
-            var count = to - from + 1; var done = 0; var cur = from; var frag = document.createDocumentFragment();
-            function next() {
-                if (cur > to) {
-                    if (isInitial) {
-                        $scroll.appendChild(frag);
-                        if (firstPg > 1) { var t = document.createElement('div'); t.className = 'ld-trigger'; t.id = 'ld-trig'; t.textContent = 'Scroll up to load earlier pages'; $scroll.insertBefore(t, $scroll.firstChild); }
-                        else { atStart = true; var m = document.createElement('div'); m.className = 'arc-start'; m.textContent = 'Start of Archive'; $scroll.insertBefore(m, $scroll.firstChild); }
-                    } else { var trig = document.getElementById('ld-trig'); if (trig) $scroll.insertBefore(frag, trig); else $scroll.insertBefore(frag, $scroll.firstChild); }
-                    if (onComplete) onComplete(); return;
+            // Show loading screen
+            $ld.style.display = 'flex';
+            $cv.style.display = 'none';
+            $ldTxt.textContent = 'Jumping to page ' + targetPg + '...';
+            $ldDet.textContent = '';
+
+            // Clear existing content and reset state
+            $scroll.innerHTML = '';
+            busy = false;
+
+            var start = targetPg;
+            var end = Math.min(totalPgs, targetPg + BATCH - 1);
+            firstPg = start;
+            lastPg = end;
+            atStart = (firstPg <= 1);
+            atEnd = (lastPg >= totalPgs);
+
+            renderBatch(start, end, true).then(function() {
+                $ld.style.display = 'none';
+                $cv.style.display = 'flex';
+                $meta.textContent = totalPgs + ' pages';
+
+                var targetCard = $scroll.querySelector('[data-pg="' + targetPg + '"]');
+                if (targetCard) {
+                    setTimeout(function() {
+                        targetCard.scrollIntoView();
+                    }, 50);
+                } else {
+                    $scroll.scrollTop = 0;
                 }
-                var num = cur; cur++;
-                pdf.getPage(num).then(function(page) {
-                    return page.getTextContent().then(function(textContent) {
-                        var text = parseTextItems(textContent.items);
-                        if (text !== null) { var div = document.createElement('div'); div.className = 'text-page'; div.setAttribute('data-pg', num); div.innerHTML = '<div class="page-marker">Page ' + num + '</div>' + text; frag.appendChild(div); }
-                        else { return appendImageToFragment(page, num, frag); }
-                    }).then(function() { done++; if (isInitial) $ldDet.textContent = done + ' / ' + count; next(); });
-                }).catch(function(err) {
-                    console.error('Failed page ' + num, err); var div = document.createElement('div'); div.className = 'text-page'; div.setAttribute('data-pg', num); div.innerHTML = '<div class="page-marker">Page ' + num + '</div><p class="chat-line" style="color:var(--err)">Failed to load this page.</p>'; frag.appendChild(div); done++; if (isInitial) $ldDet.textContent = done + ' / ' + count; next();
-                });
-            }
-            next();
-        }
-
-        function parseTextItems(items) {
-            if (!items || !items.length) return null; var lines = {}; var lineOrder = []; 
-            items.forEach(function(item) { var str = item.str.trim(); if (!str) return; var y = Math.round(item.transform[5] / 2) * 2; if (!lines[y]) { lines[y] = []; lineOrder.push(y); } lines[y].push({ x: item.transform[4], text: str }); });
-            if (!lineOrder.length) return null; var html = '';
-            lineOrder.forEach(function(y) {
-                lines[y].sort(function(a, b) { return a.x - b.x; }); var lineText = lines[y].map(function(t) { return t.text; }).join(' ');
-                var formatted = lineText.replace(/^([\d\/,\s: AMP]+ - )([^:]{1,30}?):\s(.*)/i, '<span class="timestamp">$1</span><strong>$2:</strong> $3');
-                if (formatted === lineText) formatted = lineText.replace(/^([^:]{1,30}?):\s(.*)/, '<strong>$1:</strong> $2');
-                html += '<p class="chat-line">' + formatted + '</p>';
-            }); return html;
-        }
-
-        function appendImageToFragment(page, num, frag) {
-            var vp = page.getViewport({ scale: IMG_SCALE }); var c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
-            return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function() {
-                if (isDark) { var ctx = c.getContext('2d'); ctx.globalCompositeOperation = 'difference'; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.globalCompositeOperation = 'source-over'; }
-                var card = document.createElement('div'); card.className = 'img-page'; card.setAttribute('data-pg', num);
-                var head = document.createElement('div'); head.className = 'img-page-head'; head.innerHTML = '<span class="img-page-tag">Scanned Page ' + num + '</span>';
-                var img = document.createElement('img'); img.src = c.toDataURL('image/jpeg', JPG_Q);
-                card.appendChild(head); card.appendChild(img); frag.appendChild(card); c.width = 0; c.height = 0;
             });
         }
 
-        /* Scroll Handling */
+        /* =============================================
+           Toast helper
+           ============================================= */
+        var _tt = null;
+        function toast(msg, err) {
+            clearTimeout(_tt);
+            $toast.textContent = msg;
+            $toast.className = 'toast' + (err ? ' t-err' : '');
+            void $toast.offsetHeight;
+            $toast.classList.add('on');
+            _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
+        }
+
+        /* =============================================
+           Load & decrypt the PDF
+           ============================================= */
+        function tryLoad(pw) {
+            $pw.style.display = 'none';
+            $ld.style.display = 'flex';
+            $ldTxt.textContent = 'Decrypting archive...';
+            $ldDet.textContent = '';
+
+            pdfjsLib.getDocument({ url: PDF_FILE, password: pw })
+            .promise.then(function(doc) {
+                pdf = doc;
+                totalPgs = doc.numPages;
+
+                // Fetch bookmarks (outline)
+                doc.getOutline().then(function(outline) {
+                    $bmList.innerHTML = '';
+                    if (outline && outline.length > 0) {
+                        $bmList.appendChild(buildBookmarksMenu(outline));
+                    } else {
+                        var empty = document.createElement('div');
+                        empty.className = 'bm-empty';
+                        empty.textContent = 'No bookmarks in this PDF';
+                        $bmList.appendChild(empty);
+                    }
+                });
+
+                var start = Math.max(1, totalPgs - BATCH + 1);
+                var end   = totalPgs;
+                firstPg   = start;
+                lastPg    = end;
+                atStart   = (firstPg <= 1);
+                atEnd     = true; // Initially loading the end
+
+                $ldTxt.textContent = 'Rendering pages...';
+                $ldDet.textContent = '0 / ' + (end - start + 1);
+
+                renderBatch(start, end, true).then(function() {
+                    $ld.style.display = 'none';
+                    $cv.style.display = 'flex';
+                    $meta.textContent = totalPgs + ' pages';
+                    $scroll.scrollTop = $scroll.scrollHeight;
+                });
+            })
+            .catch(function(e) {
+                console.error(e);
+                $ld.style.display = 'none';
+                $pw.style.display = 'flex';
+                $goBtn.disabled = false;
+                $goBtn.textContent = 'Unlock Archive';
+
+                if (e.name === 'PasswordException') {
+                    $fErr.textContent = 'Wrong password. Please try again.';
+                    $pwIn.classList.add('shake');
+                    $pwIn.value = '';
+                    $pwIn.focus();
+                } else {
+                    $fErr.textContent = 'File not found. Make sure "' + PDF_FILE + '" is uploaded.';
+                    $pwIn.classList.add('shake');
+                }
+            });
+        }
+
+        /* =============================================
+           Render a batch of PDF pages into cards
+           ============================================= */
+        function renderBatch(from, to, initial, position) {
+            var count = to - from + 1;
+            var done  = 0;
+            var frag  = document.createDocumentFragment();
+            var cards = {}; // Use an object to store elements by page number to ensure sequential order
+
+            var jobs = [];
+
+            for (var p = from; p <= to; p++) {
+                (function(num) {
+                    jobs.push(
+                        pdf.getPage(num).then(function(page) {
+                            var vp = page.getViewport({ scale: SCALE });
+                            var c  = document.createElement('canvas');
+                            c.width  = Math.floor(vp.width);
+                            c.height = Math.floor(vp.height);
+
+                            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
+                            .promise.then(function() {
+                                var img = document.createElement('img');
+                                img.src = c.toDataURL('image/jpeg', JPG_Q);
+                                img.alt = 'Page ' + num;
+
+                                var card = document.createElement('div');
+                                card.className = 'pg-card';
+                                card.setAttribute('data-pg', num);
+
+                                var head = document.createElement('div');
+                                head.className = 'pg-head';
+                                head.innerHTML =
+                                    '<span class="pg-tag">Page ' + num + '</span>' +
+                                    '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
+
+                                card.appendChild(head);
+                                card.appendChild(img);
+                                cards[num] = card; // Store card by its page number
+
+                                done++;
+                                if (initial) $ldDet.textContent = done + ' / ' + count;
+                            });
+                        })
+                    );
+                })(p);
+            }
+
+            return Promise.all(jobs).then(function() {
+                // Append in strict sequential order to fix async loading scramble
+                for (var p = from; p <= to; p++) {
+                    if (cards[p]) {
+                        frag.appendChild(cards[p]);
+                    }
+                }
+
+                if (initial) {
+                    $scroll.appendChild(frag);
+
+                    if (firstPg > 1) {
+                        var topTrig = document.createElement('div');
+                        topTrig.className = 'ld-trigger';
+                        topTrig.id = 'ld-trig-top';
+                        topTrig.textContent = 'Scroll up to load earlier pages';
+                        $scroll.insertBefore(topTrig, $scroll.firstChild);
+                    } else {
+                        atStart = true;
+                        var topMsg = document.createElement('div');
+                        topMsg.className = 'arc-start';
+                        topMsg.id = 'ld-trig-top';
+                        topMsg.textContent = 'Start of Archive';
+                        $scroll.insertBefore(topMsg, $scroll.firstChild);
+                    }
+
+                    if (lastPg < totalPgs) {
+                        var botTrig = document.createElement('div');
+                        botTrig.className = 'ld-trigger';
+                        botTrig.id = 'ld-trig-bot';
+                        botTrig.textContent = 'Scroll down to load later pages';
+                        $scroll.appendChild(botTrig);
+                    } else {
+                        atEnd = true;
+                        var botMsg = document.createElement('div');
+                        botMsg.className = 'arc-start';
+                        botMsg.id = 'ld-trig-bot';
+                        botMsg.textContent = 'End of Archive';
+                        $scroll.appendChild(botMsg);
+                    }
+                } else {
+                    if (position === 'top') {
+                        var trigTop = document.getElementById('ld-trig-top');
+                        if (trigTop) {
+                            $scroll.insertBefore(frag, trigTop);
+                        } else {
+                            $scroll.insertBefore(frag, $scroll.firstChild);
+                        }
+                    } else if (position === 'bottom') {
+                        var trigBot = document.getElementById('ld-trig-bot');
+                        if (trigBot) {
+                            $scroll.insertBefore(frag, trigBot);
+                        } else {
+                            $scroll.appendChild(frag);
+                        }
+                    }
+                }
+            });
+        }
+
+        /* =============================================
+           Scroll — load older/newer pages
+           ============================================= */
         $scroll.addEventListener('scroll', function() {
-            if (!scrollTick) { requestAnimationFrame(function() { updateCurrentPage(); scrollTick = false; }); scrollTick = true; }
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
-            if (fromBot > 600) $sb.classList.add('on'); else $sb.classList.remove('on');
-            if (!atStart && !busy && $scroll.scrollTop < 100) loadOlder();
+            
+            if (fromBot > 600) { $sb.classList.add('on'); }
+            else               { $sb.classList.remove('on'); }
+
+            if (!atStart && !busy && $scroll.scrollTop < 100) {
+                loadOlder();
+            }
+
+            if (!atEnd && !busy && fromBot < 100) {
+                loadNewer();
+            }
         });
 
         function loadOlder() {
-            busy = true; var trig = document.getElementById('ld-trig'); if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
-            var newFirst = Math.max(1, firstPg - BATCH); var newLast = firstPg - 1; var prevH = $scroll.scrollHeight;
-            extractChunk(newFirst, newLast, false, function() {
-                firstPg = newFirst; busy = false; $scroll.scrollTop = $scroll.scrollHeight - prevH;
-                var trig = document.getElementById('ld-trig');
-                if (firstPg <= 1) { atStart = true; if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; } }
-                else { if (trig) trig.innerHTML = 'Scroll up to load earlier pages'; }
+            busy = true;
+            var trig = document.getElementById('ld-trig-top');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
+
+            var prevScrollTop = $scroll.scrollTop;
+            var prevH = $scroll.scrollHeight;
+
+            var newFirst = Math.max(1, firstPg - BATCH);
+            var newLast  = firstPg - 1;
+
+            renderBatch(newFirst, newLast, false, 'top').then(function() {
+                firstPg = newFirst;
+                // Maintain relative scroll position properly
+                $scroll.scrollTop = prevScrollTop + ($scroll.scrollHeight - prevH);
+                busy = false;
+
+                var trig = document.getElementById('ld-trig-top');
+                if (firstPg <= 1) {
+                    atStart = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.innerHTML = 'Start of Archive';
+                    }
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                }
             });
         }
 
-        $sb.addEventListener('click', function() { $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' }); });
+        function loadNewer() {
+            busy = true;
+            var trig = document.getElementById('ld-trig-bot');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading later pages...';
+
+            var prevScrollTop = $scroll.scrollTop;
+
+            var newFirst = lastPg + 1;
+            var newLast  = Math.min(totalPgs, lastPg + BATCH);
+
+            renderBatch(newFirst, newLast, false, 'bottom').then(function() {
+                lastPg = newLast;
+                // Keep scroll position the same visually
+                $scroll.scrollTop = prevScrollTop;
+                busy = false;
+
+                var trig = document.getElementById('ld-trig-bot');
+                if (lastPg >= totalPgs) {
+                    atEnd = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.innerHTML = 'End of Archive';
+                    }
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll down to load later pages';
+                }
+            });
+        }
+
+        /* =============================================
+           Scroll-to-bottom button
+           ============================================= */
+        $sb.addEventListener('click', function() {
+            $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' });
+        });
     </script>
 </body>
 </html>
