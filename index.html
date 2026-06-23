@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat Archive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        :root{
+            --bg:#0a0a0a;--bg2:#111;--card:#161616;
+            --accent:#d4a03c;--accent-h:#b8862e;--accent-glow:rgba(212,160,60,.08);
+            --fg:#e4e4e4;--fg2:#b0b0b0;--muted:#6a6a6a;
+            --border:#232323;--err:#d94444;--rad:12px;
+            --dot-opacity:.015
+        }
+        :root.light{
+            --bg:#f5f3ef;--bg2:#eae7e1;--card:#ffffff;
+            --accent:#b8862e;--accent-h:#9a6f24;--accent-glow:rgba(184,134,46,.1);
+            --fg:#1a1a1a;--fg2:#444;--muted:#888;
+            --border:#d8d4ce;--err:#c03030;
+            --dot-opacity:.04
+        }
+        body{
+            font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+            background:var(--bg);color:var(--fg);
+            height:100vh;height:100dvh;overflow:hidden;
+            transition:background .3s,color .3s
+        }
+
+        /* === PASSWORD SCREEN === */
+        #pw-screen{
+            position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+            background:var(--bg);z-index:100;padding:20px;
+            transition:background .3s
+        }
+        #pw-screen::before{
+            content:'';position:absolute;width:420px;height:420px;border-radius:50%;
+            background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%);
+            top:18%;left:50%;transform:translateX(-50%);pointer-events:none
+        }
+        .pw-card{
+            position:relative;background:var(--card);border:1px solid var(--border);
+            border-radius:20px;padding:40px 28px 32px;width:100%;max-width:380px;
+            text-align:center;
+            box-shadow:0 0 80px var(--accent-glow),0 24px 64px rgba(0,0,0,.5);
+            animation:cardIn .5s ease;transition:background .3s,border-color .3s
+        }
+        @keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
+        .lock-wrap{
+            width:60px;height:60px;border:2px solid var(--accent);border-radius:50%;
+            display:flex;align-items:center;justify-content:center;margin:0 auto 24px;
+            color:var(--accent);background:var(--accent-glow)
+        }
+        .pw-card h1{font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+        .pw-card .sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px}
+        .inp-wrap{position:relative;margin-bottom:8px}
+        .inp-wrap input{
+            width:100%;padding:14px 48px 14px 16px;background:var(--bg);
+            border:1.5px solid var(--border);border-radius:var(--rad);color:var(--fg);
+            font-size:15px;font-family:inherit;outline:none;
+            transition:border-color .2s,background .3s,color .3s
+        }
+        .inp-wrap input:focus{border-color:var(--accent)}
+        .inp-wrap input.shake{border-color:var(--err);animation:shake .4s ease}
+        @keyframes shake{
+            0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}
+            40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}
+        }
+        .eye-btn{
+            position:absolute;right:4px;top:50%;transform:translateY(-50%);
+            width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+            background:none;border:none;color:var(--muted);cursor:pointer;border-radius:8px
+        }
+        .eye-btn:active{color:var(--fg)}
+        .fld-err{color:var(--err);font-size:13px;min-height:28px;line-height:28px;text-align:left;padding-left:4px}
+        .go-btn{
+            width:100%;padding:14px;background:var(--accent);color:#0a0a0a;border:none;
+            border-radius:var(--rad);font-size:15px;font-weight:700;font-family:inherit;
+            cursor:pointer;transition:background .15s,transform .1s;margin-top:4px
+        }
+        .go-btn:active{transform:scale(.97);background:var(--accent-h)}
+        .go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+        /* === LOADING SCREEN === */
+        #ld-screen{
+            position:fixed;inset:0;display:none;flex-direction:column;
+            align-items:center;justify-content:center;background:var(--bg);z-index:90;
+            transition:background .3s
+        }
+        .sp{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:24px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
+        .ld-det{font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+
+        /* === CHAT VIEW === */
+        #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
+        .ch-hdr{
+            flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
+            padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
+            display:flex;align-items:center;gap:12px;z-index:10;
+            transition:background .3s,border-color .3s
+        }
+        .hdr-icon{
+            width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-h));
+            border-radius:10px;display:flex;align-items:center;justify-content:center;
+            flex-shrink:0;color:#0a0a0a
+        }
+        .hdr-info{flex:1;min-width:0}
+        .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
+        .hdr-info span{font-size:12px;color:var(--muted)}
+        .theme-btn{
+            width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+            background:var(--card);display:flex;align-items:center;justify-content:center;
+            cursor:pointer;color:var(--fg);flex-shrink:0;
+            transition:background .2s,border-color .2s,transform .1s
+        }
+        .theme-btn:active{transform:scale(.9)}
+        .ch-scroll{
+            flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+            padding:10px 10px 20px;display:flex;flex-direction:column;gap:10px;
+            background-image:radial-gradient(circle,rgba(255,255,255,var(--dot-opacity)) 1px,transparent 1px);
+            background-size:20px 20px
+        }
+        .ch-scroll::-webkit-scrollbar{width:3px}
+        .ch-scroll::-webkit-scrollbar-track{background:transparent}
+        .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+        .ld-trigger{
+            text-align:center;padding:14px;color:var(--muted);font-size:12px;
+            flex-shrink:0;user-select:none
+        }
+        .mini-sp{
+            display:inline-block;width:16px;height:16px;border:2px solid var(--border);
+            border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+            vertical-align:middle;margin-right:8px
+        }
+        .arc-start{
+            text-align:center;padding:20px;color:var(--muted);font-size:11px;
+            letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0
+        }
+        .arc-start::before,.arc-start::after{
+            content:'';display:inline-block;width:40px;height:1px;
+            background:var(--border);vertical-align:middle;margin:0 12px
+        }
+        .pg-card{
+            background:var(--card);border:1px solid var(--border);
+            border-left:3px solid var(--accent);border-radius:var(--rad);
+            overflow:hidden;flex-shrink:0;animation:fadeUp .35s ease both;
+            transition:background .3s,border-color .3s
+        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        .pg-head{
+            padding:6px 12px;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;
+            background:rgba(255,255,255,.01);transition:border-color .3s
+        }
+        .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+        .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+        .pg-card img{width:100%;display:block;min-height:80px;background:var(--bg)}
+        .sb-btn{
+            position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));
+            right:16px;width:44px;height:44px;border-radius:50%;
+            background:var(--card);border:1px solid var(--border);color:var(--fg);
+            display:none;align-items:center;justify-content:center;cursor:pointer;
+            z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);
+            transition:transform .15s,background .3s,border-color .3s
+        }
+        .sb-btn:active{transform:scale(.9);background:var(--border)}
+        .sb-btn.on{display:flex}
+        .toast{
+            position:fixed;bottom:80px;left:50%;
+            transform:translateX(-50%) translateY(80px);
+            background:var(--card);border:1px solid var(--border);color:var(--fg);
+            padding:10px 20px;border-radius:10px;font-size:13px;z-index:200;
+            transition:transform .3s ease,background .3s,border-color .3s,color .3s;
+            white-space:nowrap;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)
+        }
+        .toast.on{transform:translateX(-50%) translateY(0)}
+        .toast.t-err{border-color:var(--err);color:var(--err)}
+
+        @media(prefers-reduced-motion:reduce){
+            .pw-card,.pg-card{animation:none}
+            .sp,.mini-sp{animation-duration:1.5s}
+            .inp-wrap input.shake{animation:none}
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== PASSWORD SCREEN ========== -->
+    <div id="pw-screen">
+        <div class="pw-card">
+            <div class="lock-wrap">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <h1>Chat Archive</h1>
+            <p class="sub">This archive is password-protected. Enter the correct password to view the messages inside.</p>
+            <div class="inp-wrap">
+                <input type="password" id="pw-in" placeholder="Enter password" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button class="eye-btn" id="eye-b" type="button" aria-label="Toggle password visibility">
+                    <svg id="eye-o" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <svg id="eye-c" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="fld-err" id="fld-err"></div>
+            <button class="go-btn" id="go-btn">Unlock Archive</button>
+        </div>
+    </div>
+
+    <!-- ========== LOADING SCREEN ========== -->
+    <div id="ld-screen">
+        <div class="sp"></div>
+        <div class="ld-txt" id="ld-txt">Decrypting archive...</div>
+        <div class="ld-det" id="ld-det"></div>
+    </div>
+
+    <!-- ========== CHAT VIEW ========== -->
+    <div id="chat-view">
+        <header class="ch-hdr">
+            <div class="hdr-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <div class="hdr-info">
+                <h2>Chat Archive</h2>
+                <span id="hdr-meta">Loading...</span>
+            </div>
+            <button class="theme-btn" id="theme-b" aria-label="Toggle theme">
+                <svg id="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg id="ico-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </header>
+        <div class="ch-scroll" id="ch-scroll"></div>
+        <button class="sb-btn" id="sb-btn" aria-label="Scroll to latest messages">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast-el"></div>
+
+    <script>
+        /* =============================================
+           PDF.js worker setup
+           ============================================= */
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        /* =============================================
+           CONFIGURATION — change these if needed
+           ============================================= */
+        var PDF_FILE    = 'chat.pdf';
+        var BATCH       = 50;
+        var SCALE       = 1.2;
+        var JPG_Q       = 0.85;
+
+        /* =============================================
+           App state
+           ============================================= */
+        var pdf        = null;
+        var totalPgs   = 0;
+        var firstPg    = 1;
+        var busy       = false;
+        var atStart    = false;
+
+        /* =============================================
+           DOM handles
+           ============================================= */
+        var $pw     = document.getElementById('pw-screen');
+        var $ld     = document.getElementById('ld-screen');
+        var $cv     = document.getElementById('chat-view');
+        var $pwIn   = document.getElementById('pw-in');
+        var $eyeB   = document.getElementById('eye-b');
+        var $eyeO   = document.getElementById('eye-o');
+        var $eyeC   = document.getElementById('eye-c');
+        var $fErr   = document.getElementById('fld-err');
+        var $goBtn  = document.getElementById('go-btn');
+        var $ldTxt  = document.getElementById('ld-txt');
+        var $ldDet  = document.getElementById('ld-det');
+        var $scroll = document.getElementById('ch-scroll');
+        var $meta   = document.getElementById('hdr-meta');
+        var $sb     = document.getElementById('sb-btn');
+        var $toast  = document.getElementById('toast-el');
+
+        /* =============================================
+           Theme toggle
+           ============================================= */
+        var $themeB  = document.getElementById('theme-b');
+        var $icoSun  = document.getElementById('ico-sun');
+        var $icoMoon = document.getElementById('ico-moon');
+        var isDark   = true;
+
+        var saved = localStorage.getItem('chat-arc-theme');
+        if (saved === 'light') {
+            isDark = false;
+            document.documentElement.classList.add('light');
+            $icoSun.style.display  = 'none';
+            $icoMoon.style.display = 'block';
+        }
+
+        $themeB.addEventListener('click', function() {
+            isDark = !isDark;
+            if (isDark) {
+                document.documentElement.classList.remove('light');
+                $icoSun.style.display  = 'block';
+                $icoMoon.style.display = 'none';
+                localStorage.setItem('chat-arc-theme', 'dark');
+            } else {
+                document.documentElement.classList.add('light');
+                $icoSun.style.display  = 'none';
+                $icoMoon.style.display = 'block';
+                localStorage.setItem('chat-arc-theme', 'light');
+            }
+        });
+
+        /* =============================================
+           Password screen interactions
+           ============================================= */
+        $eyeB.addEventListener('click', function() {
+            var show = $pwIn.type === 'password';
+            $pwIn.type = show ? 'text' : 'password';
+            $eyeO.style.display = show ? 'none' : 'block';
+            $eyeC.style.display = show ? 'block' : 'none';
+        });
+
+        $pwIn.addEventListener('input', function() {
+            $fErr.textContent = '';
+            $pwIn.classList.remove('shake');
+        });
+
+        $pwIn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') $goBtn.click();
+        });
+
+        $goBtn.addEventListener('click', function() {
+            var v = $pwIn.value;
+            if (!v) {
+                $fErr.textContent = 'Please enter a password.';
+                $pwIn.classList.add('shake');
+                return;
+            }
+            $fErr.textContent = '';
+            $pwIn.classList.remove('shake');
+            $goBtn.disabled = true;
+            $goBtn.textContent = 'Verifying...';
+            tryLoad(v);
+        });
+
+        /* =============================================
+           Toast helper
+           ============================================= */
+        var _tt = null;
+        function toast(msg, err) {
+            clearTimeout(_tt);
+            $toast.textContent = msg;
+            $toast.className = 'toast' + (err ? ' t-err' : '');
+            void $toast.offsetHeight;
+            $toast.classList.add('on');
+            _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
+        }
+
+        /* =============================================
+           Load & decrypt the PDF
+           ============================================= */
+        function tryLoad(pw) {
+            $pw.style.display = 'none';
+            $ld.style.display = 'flex';
+            $ldTxt.textContent = 'Decrypting archive...';
+            $ldDet.textContent = '';
+
+            pdfjsLib.getDocument({ url: PDF_FILE, password: pw })
+            .promise.then(function(doc) {
+                pdf = doc;
+                totalPgs = doc.numPages;
+
+                var start = Math.max(1, totalPgs - BATCH + 1);
+                var end   = totalPgs;
+                firstPg   = start;
+
+                $ldTxt.textContent = 'Rendering pages...';
+                $ldDet.textContent = '0 / ' + (end - start + 1);
+
+                renderBatch(start, end, true).then(function() {
+                    $ld.style.display = 'none';
+                    $cv.style.display = 'flex';
+                    $meta.textContent = totalPgs + ' pages';
+                    $scroll.scrollTop = $scroll.scrollHeight;
+                });
+            })
+            .catch(function(e) {
+                console.error(e);
+                $ld.style.display = 'none';
+                $pw.style.display = 'flex';
+                $goBtn.disabled = false;
+                $goBtn.textContent = 'Unlock Archive';
+
+                if (e.name === 'PasswordException') {
+                    $fErr.textContent = 'Wrong password. Please try again.';
+                    $pwIn.classList.add('shake');
+                    $pwIn.value = '';
+                    $pwIn.focus();
+                } else {
+                    $fErr.textContent = 'File not found. Make sure "' + PDF_FILE + '" is uploaded.';
+                    $pwIn.classList.add('shake');
+                }
+            });
+        }
+
+        /* =============================================
+           Render a batch of PDF pages into cards
+           ============================================= */
+        function renderBatch(from, to, initial) {
+            var count = to - from + 1;
+            var done  = 0;
+            var frag  = document.createDocumentFragment();
+            var jobs  = [];
+
+            for (var p = from; p <= to; p++) {
+                (function(num) {
+                    jobs.push(
+                        pdf.getPage(num).then(function(page) {
+                            var vp = page.getViewport({ scale: SCALE });
+                            var c  = document.createElement('canvas');
+                            c.width  = Math.floor(vp.width);
+                            c.height = Math.floor(vp.height);
+
+                            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
+                            .promise.then(function() {
+                                var img = document.createElement('img');
+                                img.src = c.toDataURL('image/jpeg', JPG_Q);
+                                img.alt = 'Page ' + num;
+
+                                var card = document.createElement('div');
+                                card.className = 'pg-card';
+                                card.setAttribute('data-pg', num);
+
+                                var head = document.createElement('div');
+                                head.className = 'pg-head';
+                                head.innerHTML =
+                                    '<span class="pg-tag">Page ' + num + '</span>' +
+                                    '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
+
+                                card.appendChild(head);
+                                card.appendChild(img);
+                                frag.appendChild(card);
+
+                                done++;
+                                if (initial) $ldDet.textContent = done + ' / ' + count;
+                            });
+                        })
+                    );
+                })(p);
+            }
+
+            return Promise.all(jobs).then(function() {
+                if (initial) {
+                    $scroll.appendChild(frag);
+
+                    if (firstPg > 1) {
+                        var t = document.createElement('div');
+                        t.className = 'ld-trigger';
+                        t.id = 'ld-trig';
+                        t.textContent = 'Scroll up to load earlier pages';
+                        $scroll.insertBefore(t, $scroll.firstChild);
+                    } else {
+                        atStart = true;
+                        var m = document.createElement('div');
+                        m.className = 'arc-start';
+                        m.textContent = 'Start of Archive';
+                        $scroll.insertBefore(m, $scroll.firstChild);
+                    }
+                } else {
+                    var trig = document.getElementById('ld-trig');
+                    if (trig) {
+                        $scroll.insertBefore(frag, trig);
+                    } else {
+                        $scroll.insertBefore(frag, $scroll.firstChild);
+                    }
+                }
+            });
+        }
+
+        /* =============================================
+           Scroll — load older pages when near top
+           ============================================= */
+        $scroll.addEventListener('scroll', function() {
+            var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
+            if (fromBot > 600) { $sb.classList.add('on'); }
+            else               { $sb.classList.remove('on'); }
+
+            if (!atStart && !busy && $scroll.scrollTop < 100) {
+                loadOlder();
+            }
+        });
+
+        function loadOlder() {
+            busy = true;
+            var trig = document.getElementById('ld-trig');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
+
+            var newFirst = Math.max(1, firstPg - BATCH);
+            var newLast  = firstPg - 1;
+            var prevH    = $scroll.scrollHeight;
+
+            renderBatch(newFirst, newLast, false).then(function() {
+                firstPg = newFirst;
+                $scroll.scrollTop = $scroll.scrollHeight - prevH;
+                busy = false;
+
+                var trig = document.getElementById('ld-trig');
+                if (firstPg <= 1) {
+                    atStart = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.id = '';
+                        trig.innerHTML = 'Start of Archive';
+                    }
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                }
+
+                $meta.textContent = 'Pages ' + firstPg + '\u2013' + totalPgs + ' of ' + totalPgs;
+            });
+        }
+
+        /* =============================================
+           Scroll-to-bottom button
+           ============================================= */
+        $sb.addEventListener('click', function() {
+            $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>
