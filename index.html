@@ -177,16 +177,35 @@
             filter:invert(1) hue-rotate(180deg)
         }
 
-        .sb-btn{
+        /* Floating Action Buttons */
+        .sb-btn, .bm-wrap{
             position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));
-            right:16px;width:44px;height:44px;border-radius:50%;
-            background:var(--card);border:1px solid var(--border);color:var(--fg);
+            height:44px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--fg);
             display:none;align-items:center;justify-content:center;cursor:pointer;
             z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);
             transition:transform .15s,background .3s,border-color .3s
         }
+        .sb-btn{width:44px;right:16px}
         .sb-btn:active{transform:scale(.9);background:var(--border)}
         .sb-btn.on{display:flex}
+
+        /* Bookmark Resume Button */
+        .bm-wrap{
+            left:16px;width:auto;border-radius:24px;padding:0 6px 0 0;gap:8px;
+            animation:fadeUp .4s ease
+        }
+        .bm-wrap.on{display:flex}
+        .bm-circle{
+            width:44px;height:44px;border-radius:50%;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            background:var(--accent);border:none;color:#0a0a0a
+        }
+        .bm-text{
+            padding-right:12px;font-size:12px;font-weight:600;white-space:nowrap;
+            color:var(--fg)
+        }
+        .bm-wrap:active{transform:scale(.95)}
+
         .toast{
             position:fixed;bottom:80px;left:50%;
             transform:translateX(-50%) translateY(80px);
@@ -202,6 +221,7 @@
             .pw-card,.pg-card{animation:none}
             .sp,.mini-sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
+            .bm-wrap{animation:none}
         }
     </style>
 </head>
@@ -270,6 +290,18 @@
             </button>
         </header>
         <div class="ch-scroll" id="ch-scroll"></div>
+        
+        <!-- Resume Bookmark Button -->
+        <div class="bm-wrap" id="bm-wrap">
+            <div class="bm-text" id="bm-text">Resume page 1</div>
+            <div class="bm-circle">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Scroll to bottom Button -->
         <button class="sb-btn" id="sb-btn" aria-label="Scroll to latest messages">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"/>
@@ -315,6 +347,8 @@
         var $icoMoon = document.getElementById('ico-moon');
         var $pgInput = document.getElementById('pg-input');
         var $pgTotal = document.getElementById('pg-total');
+        var $bmWrap  = document.getElementById('bm-wrap');
+        var $bmText  = document.getElementById('bm-text');
 
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
@@ -396,6 +430,9 @@
                 return;
             }
 
+            // Hide bookmark button if they jump somewhere else manually
+            $bmWrap.classList.remove('on');
+
             var el = document.querySelector('[data-pg="' + target + '"]');
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth' });
@@ -448,7 +485,7 @@
         }
 
         /* =============================================
-           Update current page counter on scroll
+           Update current page counter on scroll & SAVE BOOKMARK
            ============================================= */
         var scrollTick = false;
         function updateCurrentPage() {
@@ -470,6 +507,8 @@
                 if (document.activeElement !== $pgInput) {
                     $pgInput.value = currentPage;
                 }
+                // Automatically save bookmark in background
+                localStorage.setItem('chat-arc-bookmark', currentPage);
             }
         }
 
@@ -511,6 +550,14 @@
                     $cv.style.display = 'flex';
                     $pgInput.value = currentPage;
                     $scroll.scrollTop = $scroll.scrollHeight;
+
+                    // Check if user has a bookmark to resume
+                    var bookmark = parseInt(localStorage.getItem('chat-arc-bookmark'));
+                    // Only show if bookmark exists AND it's not the exact page they are already on
+                    if (bookmark && bookmark !== currentPage) {
+                        $bmText.textContent = 'Resume page ' + bookmark;
+                        $bmWrap.classList.add('on');
+                    }
                 });
             })
             .catch(function(e) {
@@ -531,6 +578,14 @@
                 }
             });
         }
+
+        /* Bookmark Button Click */
+        $bmWrap.addEventListener('click', function() {
+            var bookmark = parseInt(localStorage.getItem('chat-arc-bookmark'));
+            if (bookmark) {
+                jumpToPage(bookmark);
+            }
+        });
 
         /* =============================================
            SEQUENTIAL RENDER ENGINE (Memory Safe)
@@ -566,7 +621,7 @@
                             $scroll.insertBefore(frag, $scroll.firstChild);
                         }
                     }
-                    return; // Resolves the chain
+                    return; 
                 }
 
                 var num = cur;
@@ -606,20 +661,20 @@
                         card.appendChild(img);
                         frag.appendChild(card);
 
-                        // CRITICAL: Instantly destroy canvas to free ~40MB RAM
+                        // Instantly destroy canvas to free ~40MB RAM per page
                         c.width = 0;
                         c.height = 0;
 
                         done++;
                         if (initial) $ldDet.textContent = done + ' / ' + count;
 
-                        return next(); // Process next page
+                        return next(); 
                     });
                 }).catch(function(err) {
                     console.error('Failed to render page ' + num, err);
                     done++;
                     if (initial) $ldDet.textContent = done + ' / ' + count;
-                    return next(); // Skip bad page and keep going
+                    return next(); 
                 });
             }
 
