@@ -95,7 +95,7 @@
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
         .ch-hdr{
             flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
-            padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
+            padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));
             display:flex;align-items:center;gap:12px;z-index:10;
             transition:background .3s,border-color .3s
         }
@@ -106,7 +106,22 @@
         }
         .hdr-info{flex:1;min-width:0}
         .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
-        .hdr-info span{font-size:12px;color:var(--muted)}
+        
+        /* Page Jumper Styles */
+        .pg-jumper{
+            display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px
+        }
+        .pg-input{
+            width:42px;padding:2px 4px;background:var(--bg);border:1px solid var(--border);
+            border-radius:4px;color:var(--fg);font-size:12px;font-family:inherit;
+            text-align:center;outline:none;-moz-appearance:textfield;
+            transition:border-color .2s,background .3s,color .3s
+        }
+        .pg-input::-webkit-inner-spin-button,
+        .pg-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+        .pg-input:focus{border-color:var(--accent)}
+        .pg-jumper-sep{color:var(--muted);font-weight:500}
+
         .theme-btn{
             width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
             background:var(--card);display:flex;align-items:center;justify-content:center;
@@ -156,12 +171,10 @@
         .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
         .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-        /* PDF page images: no CSS filter in dark mode (already inverted in JS) */
         .pg-card img{
             width:100%;display:block;min-height:80px;background:var(--bg);
             transition:filter .3s,background .3s
         }
-        /* In light mode, CSS filter reverses the JS inversion back to original colors */
         :root.light .pg-card img{
             filter:invert(1) hue-rotate(180deg)
         }
@@ -239,7 +252,11 @@
             </div>
             <div class="hdr-info">
                 <h2>Chat Archive</h2>
-                <span id="hdr-meta">Loading...</span>
+                <div class="pg-jumper">
+                    <input type="number" id="pg-input" value="1" min="1" class="pg-input" inputmode="numeric">
+                    <span class="pg-jumper-sep">/</span>
+                    <span id="pg-total">0</span>
+                </div>
             </div>
             <button class="theme-btn" id="theme-b" aria-label="Toggle theme">
                 <svg id="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -270,34 +287,36 @@
 
         var PDF_FILE = 'chat.pdf';
         var BATCH    = 50;
-        var SCALE    = 1.2;
-        var JPG_Q    = 0.85;
+        var SCALE    = 2.0;  /* Increased for high quality (was 1.2) */
+        var JPG_Q    = 0.92; /* Increased JPEG quality (was 0.85) */
 
-        var pdf      = null;
-        var totalPgs = 0;
-        var firstPg  = 1;
-        var busy     = false;
-        var atStart  = false;
-        var isDark   = true;
+        var pdf        = null;
+        var totalPgs   = 0;
+        var firstPg    = 1;
+        var busy       = false;
+        var atStart    = false;
+        var isDark     = true;
+        var currentPage = 1;
 
-        var $pw     = document.getElementById('pw-screen');
-        var $ld     = document.getElementById('ld-screen');
-        var $cv     = document.getElementById('chat-view');
-        var $pwIn   = document.getElementById('pw-in');
-        var $eyeB   = document.getElementById('eye-b');
-        var $eyeO   = document.getElementById('eye-o');
-        var $eyeC   = document.getElementById('eye-c');
-        var $fErr   = document.getElementById('fld-err');
-        var $goBtn  = document.getElementById('go-btn');
-        var $ldTxt  = document.getElementById('ld-txt');
-        var $ldDet  = document.getElementById('ld-det');
-        var $scroll = document.getElementById('ch-scroll');
-        var $meta   = document.getElementById('hdr-meta');
-        var $sb     = document.getElementById('sb-btn');
-        var $toast  = document.getElementById('toast-el');
-        var $themeB = document.getElementById('theme-b');
-        var $icoSun = document.getElementById('ico-sun');
-        var $icoMoon= document.getElementById('ico-moon');
+        var $pw      = document.getElementById('pw-screen');
+        var $ld      = document.getElementById('ld-screen');
+        var $cv      = document.getElementById('chat-view');
+        var $pwIn    = document.getElementById('pw-in');
+        var $eyeB    = document.getElementById('eye-b');
+        var $eyeO    = document.getElementById('eye-o');
+        var $eyeC    = document.getElementById('eye-c');
+        var $fErr    = document.getElementById('fld-err');
+        var $goBtn   = document.getElementById('go-btn');
+        var $ldTxt   = document.getElementById('ld-txt');
+        var $ldDet   = document.getElementById('ld-det');
+        var $scroll  = document.getElementById('ch-scroll');
+        var $sb      = document.getElementById('sb-btn');
+        var $toast   = document.getElementById('toast-el');
+        var $themeB  = document.getElementById('theme-b');
+        var $icoSun  = document.getElementById('ico-sun');
+        var $icoMoon = document.getElementById('ico-moon');
+        var $pgInput = document.getElementById('pg-input');
+        var $pgTotal = document.getElementById('pg-total');
 
         /* Restore saved theme */
         var saved = localStorage.getItem('chat-arc-theme');
@@ -355,6 +374,121 @@
             tryLoad(v);
         });
 
+        /* =============================================
+           Page Jumper Logic
+           ============================================= */
+        $pgInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur(); // Hide keyboard on Android
+                jumpToPage(this.value);
+            }
+        });
+
+        // If they tap away, try to jump
+        $pgInput.addEventListener('blur', function() {
+            if (this.value != currentPage) {
+                jumpToPage(this.value);
+            } else {
+                this.value = currentPage; // Revert invalid typing
+            }
+        });
+
+        function jumpToPage(target) {
+            target = parseInt(target);
+            if (isNaN(target) || target < 1 || target > totalPgs) {
+                toast('Enter a valid page (1-' + totalPgs + ')', true);
+                $pgInput.value = currentPage;
+                return;
+            }
+
+            // Is it already in the DOM?
+            var el = document.querySelector('[data-pg="' + target + '"]');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            // Not in DOM. We need to load backwards until we hit it.
+            if (target < firstPg) {
+                loadUpTo(target);
+            }
+        }
+
+        // Recursively load batches backwards until target page is reached
+        function loadUpTo(target) {
+            busy = true;
+            var trig = document.getElementById('ld-trig');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Jumping to page ' + target + '...';
+
+            var newFirst = Math.max(1, firstPg - BATCH);
+            var newLast  = firstPg - 1;
+            var prevH    = $scroll.scrollHeight;
+
+            renderBatch(newFirst, newLast, false).then(function() {
+                firstPg = newFirst;
+
+                // Keep user looking at current content while loading in background
+                $scroll.scrollTop = $scroll.scrollHeight - prevH;
+
+                var trig = document.getElementById('ld-trig');
+                if (firstPg <= 1) {
+                    atStart = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.id = '';
+                        trig.innerHTML = 'Start of Archive';
+                    }
+                } else {
+                    if (trig) trig.innerHTML = '<span class="mini-sp"></span>Jumping to page ' + target + '...';
+                }
+
+                // Did we reach the target yet?
+                if (firstPg > target) {
+                    // Let the browser breathe, then load the next batch
+                    setTimeout(function() { loadUpTo(target); }, 50);
+                } else {
+                    // Done! Scroll to it
+                    busy = false;
+                    var el = document.querySelector('[data-pg="' + target + '"]');
+                    if (el) {
+                        setTimeout(function() {
+                            el.scrollIntoView({ behavior: 'smooth' });
+                            if (trig && !atStart) trig.innerHTML = 'Scroll up to load earlier pages';
+                        }, 100);
+                    }
+                }
+            });
+        }
+
+        /* =============================================
+           Update current page number in header
+           ============================================= */
+        var scrollTick = false;
+        function updateCurrentPage() {
+            var cards = $scroll.querySelectorAll('.pg-card');
+            var current = 1;
+            var scrollRect = $scroll.getBoundingClientRect();
+            
+            for (var i = 0; i < cards.length; i++) {
+                var rect = cards[i].getBoundingClientRect();
+                // If top of card is above halfway point of screen
+                if (rect.top <= scrollRect.top + 100) {
+                    current = parseInt(cards[i].getAttribute('data-pg'));
+                } else {
+                    break; // Optimisation: stop checking once we pass the visible area
+                }
+            }
+            
+            if (current !== currentPage) {
+                currentPage = current;
+                // Don't overwrite if user is currently typing in the box
+                if (document.activeElement !== $pgInput) {
+                    $pgInput.value = currentPage;
+                }
+            }
+        }
+
         /* Toast */
         var _tt = null;
         function toast(msg, err) {
@@ -377,10 +511,13 @@
             .promise.then(function(doc) {
                 pdf = doc;
                 totalPgs = doc.numPages;
+                $pgTotal.textContent = totalPgs;
+                $pgInput.max = totalPgs;
 
                 var start = Math.max(1, totalPgs - BATCH + 1);
                 var end   = totalPgs;
                 firstPg   = start;
+                currentPage = end; // Start at latest page
 
                 $ldTxt.textContent = 'Rendering pages...';
                 $ldDet.textContent = '0 / ' + (end - start + 1);
@@ -388,7 +525,7 @@
                 renderBatch(start, end, true).then(function() {
                     $ld.style.display = 'none';
                     $cv.style.display = 'flex';
-                    $meta.textContent = totalPgs + ' pages';
+                    $pgInput.value = currentPage;
                     $scroll.scrollTop = $scroll.scrollHeight;
                 });
             })
@@ -432,15 +569,7 @@
                                 viewport: vp
                             })
                             .promise.then(function() {
-
-                                /* 
-                                   Invert colors in JavaScript so the page 
-                                   is black background with white text.
-                                   Uses canvas 'difference' blend mode — 
-                                   drawing white over the image mathematically 
-                                   inverts every pixel. This is hardware-
-                                   accelerated and works on all Android versions.
-                                */
+                                // Invert colors for dark mode
                                 if (isDark) {
                                     var ctx = c.getContext('2d');
                                     ctx.globalCompositeOperation = 'difference';
@@ -505,6 +634,15 @@
 
         /* Scroll handling */
         $scroll.addEventListener('scroll', function() {
+            // Update page counter (throttled with rAF for performance)
+            if (!scrollTick) {
+                requestAnimationFrame(function() {
+                    updateCurrentPage();
+                    scrollTick = false;
+                });
+                scrollTick = true;
+            }
+
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
             if (fromBot > 600) { $sb.classList.add('on'); }
             else               { $sb.classList.remove('on'); }
@@ -539,8 +677,6 @@
                 } else {
                     if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
                 }
-
-                $meta.textContent = 'Pages ' + firstPg + '\u2013' + totalPgs + ' of ' + totalPgs;
             });
         }
 
