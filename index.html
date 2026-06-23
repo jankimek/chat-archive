@@ -410,14 +410,11 @@
                 if (firstPg <= target) {
                     busy = false;
                     
-                    // Give Android a brief moment to calculate layout of the newly inserted pages
                     setTimeout(function() {
                         var el = document.querySelector('[data-pg="' + target + '"]');
                         if (el) {
-                            // Instantly snap to the target page while still hidden behind the jump screen
                             el.scrollIntoView({ behavior: 'auto' }); 
                         }
-                        // Reveal the chat view
                         $jumpScr.style.display = 'none';
                     }, 50);
                     return;
@@ -450,7 +447,6 @@
         /* Ultra-fast Scroll Tracking */
         var scrollTick = false;
         function updateCurrentPage() {
-            // Check a point slightly below the top of the screen (0ms instead of looping 3000 elements)
             var el = document.elementFromPoint(window.innerWidth / 2, 150);
             if (!el) return;
             
@@ -462,7 +458,6 @@
                     if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
                 }
             } else if ($scroll.scrollTop < 50) {
-                // Fallback if at the absolute top
                 currentPage = firstPg;
                 if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
             }
@@ -539,7 +534,10 @@
                 pdf.getPage(num).then(function(page) {
                     return page.getTextContent().then(function(textContent) {
                         var text = parseTextItems(textContent.items);
-                        if (text) {
+                        
+                        // FIX: Use !== null so empty text pages still get a DOM element.
+                        // This prevents the page from vanishing and breaking scroll math.
+                        if (text !== null) {
                             var div = document.createElement('div'); div.className = 'text-page'; div.setAttribute('data-pg', num);
                             div.innerHTML = '<div class="page-marker">Page ' + num + '</div>' + text;
                             frag.appendChild(div);
@@ -552,7 +550,17 @@
                         next();
                     });
                 }).catch(function(err) {
-                    console.error('Failed page ' + num, err); done++;
+                    console.error('Failed page ' + num, err); 
+                    
+                    // CRITICAL FIX: Force a placeholder so the page NEVER vanishes.
+                    // Vanishing pages cause teleporting scroll bugs.
+                    var div = document.createElement('div'); 
+                    div.className = 'text-page'; 
+                    div.setAttribute('data-pg', num);
+                    div.innerHTML = '<div class="page-marker">Page ' + num + '</div><p class="chat-line" style="color:var(--err)">Failed to load this page.</p>';
+                    frag.appendChild(div);
+                    
+                    done++;
                     if (isInitial) $ldDet.textContent = done + ' / ' + count;
                     next(); 
                 });
@@ -619,14 +627,11 @@
             var newFirst = Math.max(1, firstPg - BATCH);
             var newLast = firstPg - 1;
             
-            // CRITICAL FIX: Measure height BEFORE inserting so we can adjust scroll position AFTER
             var prevH = $scroll.scrollHeight;
 
             extractChunk(newFirst, newLast, false, function() {
                 firstPg = newFirst; 
                 busy = false;
-                
-                // CRITICAL FIX: Adjust scroll so the user stays looking at the same text
                 $scroll.scrollTop = $scroll.scrollHeight - prevH;
 
                 var trig = document.getElementById('ld-trig');
