@@ -90,20 +90,14 @@
         .sp{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:24px}
         @keyframes spin{to{transform:rotate(360deg)}}
         .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
-        .ld-det{font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
+        .ld-det{font-size:13px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
 
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
         .ch-hdr{
             flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
             padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));
             display:flex;align-items:center;gap:12px;z-index:10;
-            transition:background .3s,border-color .3s;
-            position:relative
-        }
-        /* Background Cache Progress Bar */
-        .progress-bar{
-            position:absolute;top:0;left:0;height:3px;background:var(--accent);
-            width:0%;z-index:11;transition:width .3s linear, opacity 1s ease
+            transition:background .3s,border-color .3s
         }
         .hdr-icon{
             width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-h));
@@ -143,15 +137,6 @@
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-        .ld-trigger{
-            text-align:center;padding:14px;color:var(--muted);font-size:12px;
-            flex-shrink:0;user-select:none
-        }
-        .mini-sp{
-            display:inline-block;width:16px;height:16px;border:2px solid var(--border);
-            border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
-            vertical-align:middle;margin-right:8px
-        }
         .arc-start{
             text-align:center;padding:20px;color:var(--muted);font-size:11px;
             letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0
@@ -206,7 +191,7 @@
 
         @media(prefers-reduced-motion:reduce){
             .pw-card,.pg-card{animation:none}
-            .sp,.mini-sp{animation-duration:1.5s}
+            .sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
         }
     </style>
@@ -248,7 +233,6 @@
 
     <div id="chat-view">
         <header class="ch-hdr">
-            <div class="progress-bar" id="progress-bar"></div>
             <div class="hdr-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -292,22 +276,13 @@
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         var PDF_FILE = 'chat.pdf';
-        var BATCH    = 50;
-        var SCALE    = 2.0;  
+        var SCALE    = 2.0;  /* High quality. Change to 1.5 if loading takes too long */
         var JPG_Q    = 0.92; 
 
         var pdf         = null;
         var totalPgs    = 0;
-        var firstPg     = 1;
-        var busy        = false;
-        var atStart     = false;
         var isDark      = true;
         var currentPage = 1;
-        
-        // Render pipeline management
-        var renderLock       = false;
-        var onRenderComplete = null;
-        var bgLoading        = false;
 
         var $pw      = document.getElementById('pw-screen');
         var $ld      = document.getElementById('ld-screen');
@@ -328,9 +303,8 @@
         var $icoMoon = document.getElementById('ico-moon');
         var $pgInput = document.getElementById('pg-input');
         var $pgTotal = document.getElementById('pg-total');
-        var $progress= document.getElementById('progress-bar');
-        var $meta    = document.querySelector('.pg-jumper'); // Reusing for progress text
 
+        /* Theme Setup */
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
             isDark = false;
@@ -354,6 +328,7 @@
             }
         });
 
+        /* Password Screen */
         $eyeB.addEventListener('click', function() {
             var show = $pwIn.type === 'password';
             $pwIn.type = show ? 'text' : 'password';
@@ -385,7 +360,7 @@
         });
 
         /* =============================================
-           Page Jumper Logic
+           Page Jumper (Instant, everything is in DOM)
            ============================================= */
         $pgInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -414,94 +389,8 @@
             var el = document.querySelector('[data-pg="' + target + '"]');
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth' });
-                return;
-            }
-
-            // Halt background loading to take priority
-            bgLoading = false; 
-
-            // If a render is currently happening, wait for it to finish safely
-            if (renderLock) {
-                onRenderComplete = function() { jumpToPage(target); };
-            } else if (target < firstPg) {
-                loadUpTo(target);
-            }
-        }
-
-        function loadUpTo(target) {
-            busy = true;
-            var trig = document.getElementById('ld-trig');
-            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Jumping to page ' + target + '...';
-
-            var newFirst = Math.max(1, firstPg - BATCH);
-            var newLast  = firstPg - 1;
-
-            renderBatch(newFirst, newLast, false, function() {
-                firstPg = newFirst;
-
-                if (firstPg > target) {
-                    setTimeout(function() { loadUpTo(target); }, 50);
-                } else {
-                    busy = false;
-                    var el = document.querySelector('[data-pg="' + target + '"]');
-                    if (el) {
-                        setTimeout(function() {
-                            el.scrollIntoView({ behavior: 'smooth' });
-                            if (trig && !atStart) trig.innerHTML = 'Scroll up to load earlier pages';
-                        }, 100);
-                    }
-                    // Resume background loading the rest of the document
-                    if (!atStart) {
-                        setTimeout(startBackgroundLoad, 1000);
-                    }
-                }
-            });
-        }
-
-        /* =============================================
-           Background Full-Document Loader
-           ============================================= */
-        function startBackgroundLoad() {
-            if (atStart || bgLoading || renderLock) return;
-            bgLoading = true;
-            
-            var newFirst = Math.max(1, firstPg - BATCH);
-            var newLast  = firstPg - 1;
-
-            renderBatch(newFirst, newLast, false, function() {
-                firstPg = newFirst;
-                updateBgProgress();
-                
-                // If jump interrupted us, stop looping
-                if (!bgLoading) return; 
-                
-                var trig = document.getElementById('ld-trig');
-                if (firstPg <= 1) {
-                    atStart = true;
-                    if (trig) {
-                        trig.className = 'arc-start';
-                        trig.id = '';
-                        trig.innerHTML = 'Start of Archive';
-                    }
-                    bgLoading = false;
-                    updateBgProgress();
-                } else {
-                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
-                    setTimeout(startBackgroundLoad, 10);
-                }
-            });
-        }
-
-        function updateBgProgress() {
-            if (atStart) {
-                $progress.style.width = '100%';
-                $pgTotal.textContent = totalPgs + ' (Cached)';
-                setTimeout(function() { $progress.style.opacity = '0'; }, 1000);
             } else {
-                var loaded = totalPgs - firstPg + 1;
-                var pct = Math.floor((loaded / totalPgs) * 100);
-                $progress.style.width = pct + '%';
-                $pgTotal.textContent = totalPgs + ' (' + pct + '%)';
+                $pgInput.value = currentPage; // Fallback
             }
         }
 
@@ -542,7 +431,9 @@
             _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
         }
 
-        /* Load PDF */
+        /* =============================================
+           Load PDF & Render ENTIRE Document Upfront
+           ============================================= */
         function tryLoad(pw) {
             $pw.style.display = 'none';
             $ld.style.display = 'flex';
@@ -556,27 +447,18 @@
                 $pgTotal.textContent = totalPgs;
                 $pgInput.max = totalPgs;
 
-                var start = Math.max(1, totalPgs - BATCH + 1);
-                var end   = totalPgs;
-                firstPg   = start;
-                currentPage = end; 
+                $ldTxt.textContent = 'Rendering full document...';
+                $ldDet.textContent = '0 / ' + totalPgs;
 
-                $ldTxt.textContent = 'Rendering pages...';
-                $ldDet.textContent = '0 / ' + (end - start + 1);
-
-                renderBatch(start, end, true, function() {
+                // Start sequential render of ALL pages
+                renderFullDocument(1, totalPgs).then(function() {
+                    // Once finished, show chat view
                     $ld.style.display = 'none';
                     $cv.style.display = 'flex';
+                    
+                    currentPage = totalPgs;
                     $pgInput.value = currentPage;
                     $scroll.scrollTop = $scroll.scrollHeight;
-
-                    if (atStart) {
-                        $progress.style.width = '100%';
-                        $pgTotal.textContent = totalPgs;
-                        setTimeout(function() { $progress.style.opacity = '0'; }, 500);
-                    } else {
-                        startBackgroundLoad();
-                    }
                 });
             })
             .catch(function(e) {
@@ -599,52 +481,17 @@
         }
 
         /* =============================================
-           SEQUENTIAL RENDER ENGINE (Mutex Locked)
+           Sequential Render Engine (Memory Safe)
+           Renders page by page to avoid crashing Android
            ============================================= */
-        function renderBatch(from, to, initial, onComplete) {
-            renderLock = true;
+        function renderFullDocument(from, to) {
             var count = to - from + 1;
             var done  = 0;
-            var frag  = document.createDocumentFragment();
             var cur   = from;
 
             function next() {
                 if (cur > to) {
-                    renderLock = false;
-                    
-                    if (initial) {
-                        $scroll.appendChild(frag);
-                        if (firstPg > 1) {
-                            var t = document.createElement('div');
-                            t.className = 'ld-trigger';
-                            t.id = 'ld-trig';
-                            t.textContent = 'Scroll up to load earlier pages';
-                            $scroll.insertBefore(t, $scroll.firstChild);
-                        } else {
-                            atStart = true;
-                            var m = document.createElement('div');
-                            m.className = 'arc-start';
-                            m.textContent = 'Start of Archive';
-                            $scroll.insertBefore(m, $scroll.firstChild);
-                        }
-                    } else {
-                        var trig = document.getElementById('ld-trig');
-                        if (trig) {
-                            $scroll.insertBefore(frag, trig);
-                        } else {
-                            $scroll.insertBefore(frag, $scroll.firstChild);
-                        }
-                    }
-
-                    if (onComplete) onComplete();
-                    
-                    // Fire global interrupt if jump is waiting
-                    if (onRenderComplete) {
-                        var cb = onRenderComplete;
-                        onRenderComplete = null;
-                        cb();
-                    }
-                    return; 
+                    return Promise.resolve();
                 }
 
                 var num = cur;
@@ -658,6 +505,7 @@
 
                     return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
                     .promise.then(function() {
+                        // Invert colors for dark mode
                         if (isDark) {
                             var ctx = c.getContext('2d');
                             ctx.globalCompositeOperation = 'difference';
@@ -682,26 +530,28 @@
 
                         card.appendChild(head);
                         card.appendChild(img);
-                        frag.appendChild(card);
+                        
+                        // Append to DOM directly (hidden behind loading screen)
+                        $scroll.appendChild(card);
 
-                        // Free memory
+                        // Instantly destroy canvas to free RAM
                         c.width = 0;
                         c.height = 0;
 
                         done++;
-                        if (initial) $ldDet.textContent = done + ' / ' + count;
+                        $ldDet.textContent = done + ' / ' + count;
 
                         return next(); 
                     });
                 }).catch(function(err) {
                     console.error('Failed to render page ' + num, err);
                     done++;
-                    if (initial) $ldDet.textContent = done + ' / ' + count;
+                    $ldDet.textContent = done + ' / ' + count;
                     return next(); 
                 });
             }
 
-            next();
+            return next();
         }
 
         /* Scroll handling */
@@ -717,45 +567,7 @@
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
             if (fromBot > 600) { $sb.classList.add('on'); }
             else               { $sb.classList.remove('on'); }
-
-            // Only trigger manual load older if background loader isn't already doing it
-            if (!atStart && !busy && !bgLoading && $scroll.scrollTop < 100) {
-                loadOlder();
-            }
         });
-
-        function loadOlder() {
-            busy = true;
-            var trig = document.getElementById('ld-trig');
-            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
-
-            var newFirst = Math.max(1, firstPg - BATCH);
-            var newLast  = firstPg - 1;
-
-            renderBatch(newFirst, newLast, false, function() {
-                firstPg = newFirst;
-                busy = false;
-
-                var trig = document.getElementById('ld-trig');
-                if (firstPg <= 1) {
-                    atStart = true;
-                    if (trig) {
-                        trig.className = 'arc-start';
-                        trig.id = '';
-                        trig.innerHTML = 'Start of Archive';
-                    }
-                    updateBgProgress();
-                } else {
-                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
-                    // If user is still sitting at the top, keep loading. Otherwise switch to background.
-                    if ($scroll.scrollTop < 100) {
-                        loadOlder();
-                    } else {
-                        startBackgroundLoad();
-                    }
-                }
-            });
-        }
 
         /* Scroll to bottom */
         $sb.addEventListener('click', function() {
