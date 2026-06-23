@@ -13,15 +13,13 @@
             --bg:#0a0a0a;--bg2:#111;--card:#161616;
             --accent:#d4a03c;--accent-h:#b8862e;--accent-glow:rgba(212,160,60,.08);
             --fg:#e4e4e4;--fg2:#b0b0b0;--muted:#6a6a6a;
-            --border:#232323;--err:#d94444;--rad:12px;
-            --dot-opacity:.015
+            --border:#232323;--err:#d94444;--rad:12px
         }
         :root.light{
             --bg:#f5f3ef;--bg2:#eae7e1;--card:#ffffff;
             --accent:#b8862e;--accent-h:#9a6f24;--accent-glow:rgba(184,134,46,.1);
             --fg:#1a1a1a;--fg2:#444;--muted:#888;
-            --border:#d8d4ce;--err:#c03030;
-            --dot-opacity:.04
+            --border:#d8d4ce;--err:#c03030
         }
         body{
             font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -127,44 +125,59 @@
             transition:background .2s,border-color .2s,transform .1s
         }
         .theme-btn:active{transform:scale(.9)}
+        
         .ch-scroll{
             flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-            padding:10px 10px 20px;display:flex;flex-direction:column;gap:10px;
-            background-image:radial-gradient(circle,rgba(255,255,255,var(--dot-opacity)) 1px,transparent 1px);
-            background-size:20px 20px
+            padding:16px 12px 40px;
+            background:var(--bg)
         }
         .ch-scroll::-webkit-scrollbar{width:3px}
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-        .arc-start{
-            text-align:center;padding:20px;color:var(--muted);font-size:11px;
-            letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0
+        /* Text Page Styles */
+        .text-page{
+            padding:12px 0;
+            border-bottom:1px solid var(--border)
         }
-        .arc-start::before,.arc-start::after{
-            content:'';display:inline-block;width:40px;height:1px;
-            background:var(--border);vertical-align:middle;margin:0 12px
+        .page-marker{
+            display:inline-block;
+            background:var(--accent);color:#0a0a0a;
+            font-size:10px;font-weight:700;padding:2px 8px;
+            border-radius:4px;margin-bottom:12px;
+            text-transform:uppercase;letter-spacing:.5px
         }
-        .pg-card{
+        .chat-line{
+            font-size:14px;line-height:1.6;
+            margin-bottom:6px;color:var(--fg2);
+            word-wrap:break-word;white-space:pre-wrap
+        }
+        .chat-line strong{
+            color:var(--fg);font-weight:700;
+            display:inline
+        }
+        .chat-line .timestamp{
+            color:var(--muted);font-size:12px;
+            margin-right:6px;font-weight:400
+        }
+
+        /* Fallback Image Styles (if a page is a scanned photo) */
+        .img-page{
             background:var(--card);border:1px solid var(--border);
             border-left:3px solid var(--accent);border-radius:var(--rad);
-            overflow:hidden;flex-shrink:0;animation:fadeUp .35s ease both;
+            overflow:hidden;flex-shrink:0;margin-bottom:16px;
             transition:background .3s,border-color .3s
         }
-        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-        .pg-head{
+        .img-page-head{
             padding:6px 12px;border-bottom:1px solid var(--border);
-            display:flex;align-items:center;justify-content:space-between;
             background:rgba(255,255,255,.01);transition:border-color .3s
         }
-        .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
-        .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-
-        .pg-card img{
+        .img-page-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+        .img-page img{
             width:100%;display:block;min-height:80px;background:var(--bg);
             transition:filter .3s,background .3s
         }
-        :root.light .pg-card img{
+        :root.light .img-page img{
             filter:invert(1) hue-rotate(180deg)
         }
 
@@ -190,7 +203,7 @@
         .toast.t-err{border-color:var(--err);color:var(--err)}
 
         @media(prefers-reduced-motion:reduce){
-            .pw-card,.pg-card{animation:none}
+            .pw-card{animation:none}
             .sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
         }
@@ -276,8 +289,9 @@
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         var PDF_FILE = 'chat.pdf';
-        var SCALE    = 2.0;  /* High quality. Change to 1.5 if loading takes too long */
-        var JPG_Q    = 0.92; 
+        // Lower scale for fallback images since they are only used if text fails
+        var IMG_SCALE = 1.5;  
+        var JPG_Q     = 0.8; 
 
         var pdf         = null;
         var totalPgs    = 0;
@@ -359,9 +373,7 @@
             tryLoad(v);
         });
 
-        /* =============================================
-           Page Jumper (Instant, everything is in DOM)
-           ============================================= */
+        /* Page Jumper */
         $pgInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -390,23 +402,21 @@
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth' });
             } else {
-                $pgInput.value = currentPage; // Fallback
+                $pgInput.value = currentPage; 
             }
         }
 
-        /* =============================================
-           Scroll Tracking
-           ============================================= */
+        /* Scroll Tracking */
         var scrollTick = false;
         function updateCurrentPage() {
-            var cards = $scroll.querySelectorAll('.pg-card');
+            var pages = $scroll.querySelectorAll('[data-pg]');
             var current = 1;
             var scrollRect = $scroll.getBoundingClientRect();
             
-            for (var i = 0; i < cards.length; i++) {
-                var rect = cards[i].getBoundingClientRect();
+            for (var i = 0; i < pages.length; i++) {
+                var rect = pages[i].getBoundingClientRect();
                 if (rect.top <= scrollRect.top + 100) {
-                    current = parseInt(cards[i].getAttribute('data-pg'));
+                    current = parseInt(pages[i].getAttribute('data-pg'));
                 } else {
                     break; 
                 }
@@ -432,7 +442,7 @@
         }
 
         /* =============================================
-           Load PDF & Render ENTIRE Document Upfront
+           Load PDF
            ============================================= */
         function tryLoad(pw) {
             $pw.style.display = 'none';
@@ -447,12 +457,10 @@
                 $pgTotal.textContent = totalPgs;
                 $pgInput.max = totalPgs;
 
-                $ldTxt.textContent = 'Rendering full document...';
+                $ldTxt.textContent = 'Extracting text...';
                 $ldDet.textContent = '0 / ' + totalPgs;
 
-                // Start sequential render of ALL pages
-                renderFullDocument(1, totalPgs).then(function() {
-                    // Once finished, show chat view
+                extractFullDocument().then(function() {
                     $ld.style.display = 'none';
                     $cv.style.display = 'flex';
                     
@@ -481,16 +489,14 @@
         }
 
         /* =============================================
-           Sequential Render Engine (Memory Safe)
-           Renders page by page to avoid crashing Android
+           Text Extraction & Fallback Image Engine
            ============================================= */
-        function renderFullDocument(from, to) {
-            var count = to - from + 1;
-            var done  = 0;
-            var cur   = from;
+        function extractFullDocument() {
+            var done = 0;
+            var cur = 1;
 
             function next() {
-                if (cur > to) {
+                if (cur > totalPgs) {
                     return Promise.resolve();
                 }
 
@@ -498,60 +504,129 @@
                 cur++;
 
                 return pdf.getPage(num).then(function(page) {
-                    var vp = page.getViewport({ scale: SCALE });
-                    var c  = document.createElement('canvas');
-                    c.width  = Math.floor(vp.width);
-                    c.height = Math.floor(vp.height);
-
-                    return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
-                    .promise.then(function() {
-                        // Invert colors for dark mode
-                        if (isDark) {
-                            var ctx = c.getContext('2d');
-                            ctx.globalCompositeOperation = 'difference';
-                            ctx.fillStyle = '#ffffff';
-                            ctx.fillRect(0, 0, c.width, c.height);
-                            ctx.globalCompositeOperation = 'source-over';
+                    // 1. Try to get text
+                    return page.getTextContent().then(function(textContent) {
+                        var text = parseTextItems(textContent.items);
+                        
+                        if (text) {
+                            // Success: Render as fast HTML text
+                            var div = document.createElement('div');
+                            div.className = 'text-page';
+                            div.setAttribute('data-pg', num);
+                            div.innerHTML = '<div class="page-marker">Page ' + num + '</div>' + text;
+                            $scroll.appendChild(div);
+                        } else {
+                            // Fallback: Page is a photo/scanned image. Render to canvas.
+                            return renderImagePage(page, num);
                         }
 
-                        var img = document.createElement('img');
-                        img.src = c.toDataURL('image/jpeg', JPG_Q);
-                        img.alt = 'Page ' + num;
-
-                        var card = document.createElement('div');
-                        card.className = 'pg-card';
-                        card.setAttribute('data-pg', num);
-
-                        var head = document.createElement('div');
-                        head.className = 'pg-head';
-                        head.innerHTML =
-                            '<span class="pg-tag">Page ' + num + '</span>' +
-                            '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
-
-                        card.appendChild(head);
-                        card.appendChild(img);
-                        
-                        // Append to DOM directly (hidden behind loading screen)
-                        $scroll.appendChild(card);
-
-                        // Instantly destroy canvas to free RAM
-                        c.width = 0;
-                        c.height = 0;
-
                         done++;
-                        $ldDet.textContent = done + ' / ' + count;
-
-                        return next(); 
+                        $ldDet.textContent = done + ' / ' + totalPgs;
+                        return next();
                     });
                 }).catch(function(err) {
-                    console.error('Failed to render page ' + num, err);
+                    console.error('Failed page ' + num, err);
                     done++;
-                    $ldDet.textContent = done + ' / ' + count;
+                    $ldDet.textContent = done + ' / ' + totalPgs;
                     return next(); 
                 });
             }
 
             return next();
+        }
+
+        /* 
+           Parses raw PDF text items into readable HTML lines.
+           Groups items by Y coordinate to form sentences, 
+           and sorts by X coordinate to fix left-to-right reading order.
+        */
+        function parseTextItems(items) {
+            if (!items || !items.length) return null;
+
+            var lines = {};
+            items.forEach(function(item) {
+                var str = item.str.trim();
+                if (!str) return;
+                
+                // Y coordinate defines the line. Round to nearest 2px to group broken words.
+                var y = Math.round(item.transform[5] / 2) * 2;
+                if (!lines[y]) lines[y] = [];
+                
+                lines[y].push({ 
+                    x: item.transform[4], 
+                    text: str 
+                });
+            });
+
+            var sortedYs = Object.keys(lines).sort(function(a, b) { return b - a; }); // Top to bottom
+            if (!sortedYs.length) return null;
+
+            var html = '';
+            sortedYs.forEach(function(y) {
+                // Sort left to right
+                lines[y].sort(function(a, b) { return a.x - b.x; });
+                
+                // Join words on same line
+                var lineText = lines[y].map(function(t) { return t.text; }).join(' ');
+                
+                // Auto-format chat patterns (e.g., "10/10/23, 10:00 AM - Name: Message")
+                // Makes the timestamp grey and the name bold
+                var formatted = lineText.replace(
+                    /^([\d\/,\s: AMP]+ - )([^:]{1,30}?):\s(.*)/i, 
+                    '<span class="timestamp">$1</span><strong>$2:</strong> $3'
+                );
+                
+                // Simpler fallback for "Name: Message"
+                if (formatted === lineText) {
+                    formatted = lineText.replace(
+                        /^([^:]{1,30}?):\s(.*)/, 
+                        '<strong>$1:</strong> $2'
+                    );
+                }
+
+                html += '<p class="chat-line">' + formatted + '</p>';
+            });
+
+            return html;
+        }
+
+        /* Fallback for scanned pages */
+        function renderImagePage(page, num) {
+            var vp = page.getViewport({ scale: IMG_SCALE });
+            var c = document.createElement('canvas');
+            c.width = Math.floor(vp.width);
+            c.height = Math.floor(vp.height);
+
+            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
+            .promise.then(function() {
+                // Invert colors if in dark mode
+                if (isDark) {
+                    var ctx = c.getContext('2d');
+                    ctx.globalCompositeOperation = 'difference';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+
+                var card = document.createElement('div');
+                card.className = 'img-page';
+                card.setAttribute('data-pg', num);
+
+                var head = document.createElement('div');
+                head.className = 'img-page-head';
+                head.innerHTML = '<span class="img-page-tag">Scanned Page ' + num + '</span>';
+
+                var img = document.createElement('img');
+                img.src = c.toDataURL('image/jpeg', JPG_Q);
+
+                card.appendChild(head);
+                card.appendChild(img);
+                $scroll.appendChild(card);
+
+                // Free memory
+                c.width = 0;
+                c.height = 0;
+            });
         }
 
         /* Scroll handling */
