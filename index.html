@@ -100,7 +100,7 @@
         .ch-hdr{
             flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
             padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));
-            display:flex;align-items:center;gap:12px;z-index:10;
+            display:flex;align-items:center;gap:12px;z-index:10;position:relative;
             transition:background .3s,border-color .3s
         }
         .hdr-icon{
@@ -108,9 +108,19 @@
             border-radius:10px;display:flex;align-items:center;justify-content:center;
             flex-shrink:0;color:#0a0a0a
         }
-        .hdr-info{flex:1;min-width:0}
+        .hdr-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
         .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
-        .hdr-info span{font-size:12px;color:var(--muted)}
+        
+        /* Editable Page Input */
+        #hdr-meta {
+            background:transparent;border:1px solid transparent;color:var(--muted);
+            font-size:12px;font-family:inherit;width:80px;padding:2px 4px;border-radius:4px;
+            outline:none;-moz-appearance:textfield;transition:border-color .2s,color .3s;
+        }
+        #hdr-meta::-webkit-outer-spin-button,
+        #hdr-meta::-webkit-inner-spin-button {-webkit-appearance:none;margin:0}
+        #hdr-meta:focus {border-color:var(--accent);color:var(--fg)}
+
         .theme-btn{
             width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
             background:var(--card);display:flex;align-items:center;justify-content:center;
@@ -191,6 +201,26 @@
         .toast.on{transform:translateX(-50%) translateY(0)}
         .toast.t-err{border-color:var(--err);color:var(--err)}
 
+        /* === BOOKMARKS DROPDOWN === */
+        .menu-dd {
+            position: absolute; top: 100%; right: 0; margin-top: 8px;
+            width: 280px; background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--rad); box-shadow: 0 12px 32px rgba(0,0,0,.5);
+            z-index: 15; display: none; flex-direction: column; overflow: hidden;
+            transition: background .3s, border-color .3s;
+        }
+        .menu-dd.on { display: flex; }
+        .bm-list { max-height: 320px; overflow-y: auto; padding: 8px 0; }
+        .bm-list::-webkit-scrollbar { width: 4px; }
+        .bm-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .bm-item {
+            padding: 8px 16px; font-size: 13px; color: var(--fg2); cursor: pointer;
+            transition: background .15s, color .15s; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .bm-item:hover { background: var(--bg2); color: var(--fg); }
+        .bm-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
         @media(prefers-reduced-motion:reduce){
             .pw-card,.pg-card{animation:none}
             .sp,.mini-sp{animation-duration:1.5s}
@@ -246,8 +276,13 @@
             </div>
             <div class="hdr-info">
                 <h2>Chat Archive</h2>
-                <span id="hdr-meta">Loading...</span>
+                <input type="number" id="hdr-meta" value="0" min="1" aria-label="Jump to page">
             </div>
+            <button class="theme-btn" id="menu-b" aria-label="Bookmarks">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+            </button>
             <button class="theme-btn" id="theme-b" aria-label="Toggle theme">
                 <svg id="ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
@@ -260,6 +295,11 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
             </button>
+
+            <!-- Bookmarks Dropdown -->
+            <div id="menu-dd" class="menu-dd">
+                <div id="bm-list" class="bm-list"></div>
+            </div>
         </header>
         <div class="ch-scroll" id="ch-scroll"></div>
         <button class="sb-btn" id="sb-btn" aria-label="Scroll to latest messages">
@@ -280,7 +320,7 @@
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         /* =============================================
-           CONFIGURATION — change these if needed
+           CONFIGURATION
            ============================================= */
         var PDF_FILE    = 'chat.pdf';
         var BATCH       = 50;
@@ -291,8 +331,10 @@
         var pdf        = null;
         var totalPgs   = 0;
         var firstPg    = 1;
+        var lastPg     = 1;      // Track the last loaded page for downward scrolling
         var busy       = false;
         var atStart    = false;
+        var atEnd      = false;
 
         /* =============================================
            DOM handles
@@ -312,6 +354,10 @@
         var $meta   = document.getElementById('hdr-meta');
         var $sb     = document.getElementById('sb-btn');
         var $toast  = document.getElementById('toast-el');
+
+        var $menuB  = document.getElementById('menu-b');
+        var $menuDd = document.getElementById('menu-dd');
+        var $bmList = document.getElementById('bm-list');
 
         /* =============================================
            Theme toggle
@@ -378,6 +424,115 @@
         });
 
         /* =============================================
+           Bookmarks Menu
+           ============================================= */
+        $menuB.addEventListener('click', function(e) {
+            e.stopPropagation();
+            $menuDd.classList.toggle('on');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!$menuDd.contains(e.target) && e.target !== $menuB && !$menuB.contains(e.target)) {
+                $menuDd.classList.remove('on');
+            }
+        });
+
+        function buildBookmarksMenu(outline, level) {
+            level = level || 0;
+            var frag = document.createDocumentFragment();
+
+            outline.forEach(function(item) {
+                var el = document.createElement('div');
+                el.className = 'bm-item';
+                el.style.paddingLeft = (16 + level * 12) + 'px';
+                el.textContent = item.title || 'Untitled';
+
+                el.addEventListener('click', function() {
+                    if (item.dest) {
+                        navigateToDest(item.dest);
+                    } else if (item.url) {
+                        window.open(item.url, '_blank');
+                    }
+                    $menuDd.classList.remove('on');
+                });
+
+                frag.appendChild(el);
+
+                if (item.items && item.items.length > 0) {
+                    var childFrag = buildBookmarksMenu(item.items, level + 1);
+                    frag.appendChild(childFrag);
+                }
+            });
+
+            return frag;
+        }
+
+        function navigateToDest(dest) {
+            var promise;
+            if (typeof dest === 'string') {
+                promise = pdf.getDestination(dest);
+            } else {
+                promise = Promise.resolve(dest);
+            }
+
+            promise.then(function(explicitDest) {
+                if (!explicitDest || !explicitDest[0]) return;
+                pdf.getPageIndex(explicitDest[0]).then(function(pageIndex) {
+                    goToPage(pageIndex + 1);
+                });
+            }).catch(function(e) {
+                console.error("Failed to navigate to destination", e);
+                toast("Failed to jump to bookmark", true);
+            });
+        }
+
+        /* =============================================
+           Page Jump Logic (Edit Header Input)
+           ============================================= */
+        $meta.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                var pg = parseInt($meta.value, 10);
+                if (!isNaN(pg)) {
+                    goToPage(pg);
+                    $meta.blur(); // hide keyboard
+                }
+            }
+        });
+
+        function goToPage(targetPg) {
+            targetPg = Math.max(1, Math.min(totalPgs, targetPg));
+            if (isNaN(targetPg)) return;
+
+            $ld.style.display = 'flex';
+            $cv.style.display = 'none';
+            $ldTxt.textContent = 'Jumping to page ' + targetPg + '...';
+            $ldDet.textContent = '';
+
+            $scroll.innerHTML = '';
+            busy = false;
+
+            var start = targetPg;
+            var end = Math.min(totalPgs, targetPg + BATCH - 1);
+            
+            firstPg = start;
+            lastPg = end;
+            atStart = (firstPg <= 1);
+            atEnd = (lastPg >= totalPgs);
+
+            renderBatch(start, end, true).then(function() {
+                $ld.style.display = 'none';
+                $cv.style.display = 'flex';
+                
+                var targetCard = $scroll.querySelector('[data-pg="' + targetPg + '"]');
+                if (targetCard) {
+                    targetCard.scrollIntoView();
+                } else {
+                    $scroll.scrollTop = 0;
+                }
+            });
+        }
+
+        /* =============================================
            Toast helper
            ============================================= */
         var _tt = null;
@@ -403,10 +558,27 @@
             .promise.then(function(doc) {
                 pdf = doc;
                 totalPgs = doc.numPages;
+                $meta.max = totalPgs;
+
+                // Fetch bookmarks (outline)
+                doc.getOutline().then(function(outline) {
+                    $bmList.innerHTML = '';
+                    if (outline && outline.length > 0) {
+                        $bmList.appendChild(buildBookmarksMenu(outline));
+                    } else {
+                        var empty = document.createElement('div');
+                        empty.className = 'bm-empty';
+                        empty.textContent = 'No bookmarks in this PDF';
+                        $bmList.appendChild(empty);
+                    }
+                });
 
                 var start = Math.max(1, totalPgs - BATCH + 1);
                 var end   = totalPgs;
                 firstPg   = start;
+                lastPg    = end;
+                atStart   = (firstPg <= 1);
+                atEnd     = true; // Initially loading the end
 
                 $ldTxt.textContent = 'Extracting text...';
                 $ldDet.textContent = '0 / ' + (end - start + 1);
@@ -414,7 +586,7 @@
                 renderBatch(start, end, true).then(function() {
                     $ld.style.display = 'none';
                     $cv.style.display = 'flex';
-                    $meta.textContent = totalPgs + ' pages';
+                    $meta.value = totalPgs; // Set initial page in input
                     $scroll.scrollTop = $scroll.scrollHeight;
                 });
             })
@@ -438,9 +610,9 @@
         }
 
         /* =============================================
-           Render a batch of PDF pages into cards
+           Render a batch of PDF pages into cards (Text)
            ============================================= */
-        function renderBatch(from, to, initial) {
+        function renderBatch(from, to, initial, position) {
             var count = to - from + 1;
             var done  = 0;
             var frag  = document.createDocumentFragment();
@@ -451,7 +623,7 @@
                 (function(num) {
                     jobs.push(
                         pdf.getPage(num).then(function(page) {
-                            // Extract text instead of rendering canvas
+                            // Extract text content
                             return page.getTextContent().then(function(textContent) {
                                 var card = document.createElement('div');
                                 card.className = 'pg-card';
@@ -469,8 +641,8 @@
                                 textDiv.className = 'pg-text';
                                 
                                 // Reconstruct text properly by checking Y positions
-                                var lastY = null;
                                 var pageText = '';
+                                var lastY = null;
                                 textContent.items.forEach(function(item) {
                                     if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
                                         pageText += '\n';
@@ -480,7 +652,7 @@
                                     lastY = item.transform[5];
                                 });
                                 
-                                textDiv.textContent = pageText;
+                                textDiv.textContent = pageText.trim() || '[No text content found on this page]';
                                 card.appendChild(textDiv);
                                 
                                 cards[num] = card; // Store card keyed by its page number
@@ -505,74 +677,143 @@
                     $scroll.appendChild(frag);
 
                     if (firstPg > 1) {
-                        var t = document.createElement('div');
-                        t.className = 'ld-trigger';
-                        t.id = 'ld-trig';
-                        t.textContent = 'Scroll up to load earlier pages';
-                        $scroll.insertBefore(t, $scroll.firstChild);
+                        var topTrig = document.createElement('div');
+                        topTrig.className = 'ld-trigger';
+                        topTrig.id = 'ld-trig-top';
+                        topTrig.textContent = 'Scroll up to load earlier pages';
+                        $scroll.insertBefore(topTrig, $scroll.firstChild);
                     } else {
                         atStart = true;
-                        var m = document.createElement('div');
-                        m.className = 'arc-start';
-                        m.id = 'ld-trig'; // Fixed: Keep ID intact so it doesn't break future loads
-                        m.textContent = 'Start of Archive';
-                        $scroll.insertBefore(m, $scroll.firstChild);
+                        var topMsg = document.createElement('div');
+                        topMsg.className = 'arc-start';
+                        topMsg.id = 'ld-trig-top';
+                        topMsg.textContent = 'Start of Archive';
+                        $scroll.insertBefore(topMsg, $scroll.firstChild);
+                    }
+
+                    if (lastPg < totalPgs) {
+                        var botTrig = document.createElement('div');
+                        botTrig.className = 'ld-trigger';
+                        botTrig.id = 'ld-trig-bot';
+                        botTrig.textContent = 'Scroll down to load later pages';
+                        $scroll.appendChild(botTrig);
+                    } else {
+                        atEnd = true;
+                        var botMsg = document.createElement('div');
+                        botMsg.className = 'arc-start';
+                        botMsg.id = 'ld-trig-bot';
+                        botMsg.textContent = 'End of Archive';
+                        $scroll.appendChild(botMsg);
                     }
                 } else {
-                    var trig = document.getElementById('ld-trig');
-                    if (trig) {
-                        $scroll.insertBefore(frag, trig);
-                    } else {
-                        $scroll.insertBefore(frag, $scroll.firstChild);
+                    if (position === 'top') {
+                        var trigTop = document.getElementById('ld-trig-top');
+                        if (trigTop) {
+                            $scroll.insertBefore(frag, trigTop);
+                        } else {
+                            $scroll.insertBefore(frag, $scroll.firstChild);
+                        }
+                    } else if (position === 'bottom') {
+                        var trigBot = document.getElementById('ld-trig-bot');
+                        if (trigBot) {
+                            $scroll.insertBefore(frag, trigBot);
+                        } else {
+                            $scroll.appendChild(frag);
+                        }
                     }
                 }
             });
         }
 
         /* =============================================
-           Scroll — load older pages when near top
+           Scroll — load older/newer pages & update input
            ============================================= */
         $scroll.addEventListener('scroll', function() {
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
+            
             if (fromBot > 600) { $sb.classList.add('on'); }
             else               { $sb.classList.remove('on'); }
 
             if (!atStart && !busy && $scroll.scrollTop < 100) {
                 loadOlder();
             }
+
+            if (!atEnd && !busy && fromBot < 100) {
+                loadNewer();
+            }
+
+            // Update page input dynamically if not actively typing
+            if (document.activeElement !== $meta) {
+                var els = $scroll.querySelectorAll('.pg-card');
+                for (var i = 0; i < els.length; i++) {
+                    var rect = els[i].getBoundingClientRect();
+                    if (rect.bottom > 80 && rect.top < window.innerHeight - 80) {
+                        var pg = els[i].getAttribute('data-pg');
+                        if ($meta.value !== pg) {
+                            $meta.value = pg;
+                        }
+                        break;
+                    }
+                }
+            }
         });
 
         function loadOlder() {
             busy = true;
-            var trig = document.getElementById('ld-trig');
+            var trig = document.getElementById('ld-trig-top');
             if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading earlier pages...';
+
+            var prevScrollTop = $scroll.scrollTop;
+            var prevH = $scroll.scrollHeight;
 
             var newFirst = Math.max(1, firstPg - BATCH);
             var newLast  = firstPg - 1;
 
-            // Correct scroll math: capture previous height and scrollTop
-            var prevScrollTop = $scroll.scrollTop;
-            var prevH = $scroll.scrollHeight;
-
-            renderBatch(newFirst, newLast, false).then(function() {
+            renderBatch(newFirst, newLast, false, 'top').then(function() {
                 firstPg = newFirst;
                 
-                // Maintain exact visual scroll position after prepending
                 var newH = $scroll.scrollHeight;
                 $scroll.scrollTop = prevScrollTop + (newH - prevH);
                 
                 busy = false;
 
-                var trig = document.getElementById('ld-trig');
+                var trig = document.getElementById('ld-trig-top');
                 if (firstPg <= 1) {
                     atStart = true;
                     if (trig) {
                         trig.className = 'arc-start';
-                        // Removed bug: trig.id = ''; (we keep the ID intact)
                         trig.innerHTML = 'Start of Archive';
                     }
                 } else {
                     if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                }
+            });
+        }
+
+        function loadNewer() {
+            busy = true;
+            var trig = document.getElementById('ld-trig-bot');
+            if (trig) trig.innerHTML = '<span class="mini-sp"></span>Loading later pages...';
+
+            var prevScrollTop = $scroll.scrollTop;
+
+            var newFirst = lastPg + 1;
+            var newLast  = Math.min(totalPgs, lastPg + BATCH);
+
+            renderBatch(newFirst, newLast, false, 'bottom').then(function() {
+                lastPg = newLast;
+                $scroll.scrollTop = prevScrollTop;
+                busy = false;
+
+                var trig = document.getElementById('ld-trig-bot');
+                if (lastPg >= totalPgs) {
+                    atEnd = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.innerHTML = 'End of Archive';
+                    }
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll down to load later pages';
                 }
             });
         }
