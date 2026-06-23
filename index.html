@@ -160,14 +160,14 @@
         .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
         .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-        /* === PDF page images — inverted in dark mode === */
-        .pg-card img{
-            width:100%;display:block;min-height:80px;background:var(--bg);
-            filter:invert(1) hue-rotate(180deg);
-            transition:filter .3s,background .3s
-        }
-        :root.light .pg-card img{
-            filter:none
+        /* === PDF text content === */
+        .pg-text {
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: var(--fg);
         }
 
         .sb-btn{
@@ -284,8 +284,6 @@
            ============================================= */
         var PDF_FILE    = 'chat.pdf';
         var BATCH       = 50;
-        var SCALE       = 1.2;
-        var JPG_Q       = 0.85;
 
         /* =============================================
            App state
@@ -410,7 +408,7 @@
                 var end   = totalPgs;
                 firstPg   = start;
 
-                $ldTxt.textContent = 'Rendering pages...';
+                $ldTxt.textContent = 'Extracting text...';
                 $ldDet.textContent = '0 / ' + (end - start + 1);
 
                 renderBatch(start, end, true).then(function() {
@@ -453,17 +451,8 @@
                 (function(num) {
                     jobs.push(
                         pdf.getPage(num).then(function(page) {
-                            var vp = page.getViewport({ scale: SCALE });
-                            var c  = document.createElement('canvas');
-                            c.width  = Math.floor(vp.width);
-                            c.height = Math.floor(vp.height);
-
-                            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
-                            .promise.then(function() {
-                                var img = document.createElement('img');
-                                img.src = c.toDataURL('image/jpeg', JPG_Q);
-                                img.alt = 'Page ' + num;
-
+                            // Extract text instead of rendering canvas
+                            return page.getTextContent().then(function(textContent) {
                                 var card = document.createElement('div');
                                 card.className = 'pg-card';
                                 card.setAttribute('data-pg', num);
@@ -475,7 +464,24 @@
                                     '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
 
                                 card.appendChild(head);
-                                card.appendChild(img);
+
+                                var textDiv = document.createElement('div');
+                                textDiv.className = 'pg-text';
+                                
+                                // Reconstruct text properly by checking Y positions
+                                var lastY = null;
+                                var pageText = '';
+                                textContent.items.forEach(function(item) {
+                                    if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
+                                        pageText += '\n';
+                                    }
+                                    pageText += item.str;
+                                    if (item.hasEOL) pageText += '\n';
+                                    lastY = item.transform[5];
+                                });
+                                
+                                textDiv.textContent = pageText;
+                                card.appendChild(textDiv);
                                 
                                 cards[num] = card; // Store card keyed by its page number
 
@@ -508,7 +514,7 @@
                         atStart = true;
                         var m = document.createElement('div');
                         m.className = 'arc-start';
-                        m.id = 'ld-trig'; // Keep ID consistent
+                        m.id = 'ld-trig'; // Fixed: Keep ID intact so it doesn't break future loads
                         m.textContent = 'Start of Archive';
                         $scroll.insertBefore(m, $scroll.firstChild);
                     }
