@@ -398,8 +398,12 @@
 
         function loadUpTo(target) {
             busy = true;
-            var totalNeeded = firstPg - target;
+            var endPg = firstPg - 1; 
+            firstPg = target; 
+
+            var totalNeeded = endPg - target + 1;
             var done = 0;
+            var curStart = target;
             
             $jumpTxt.textContent = 'Jumping to page ' + target + '...';
             $jumpDet.textContent = '0 / ' + totalNeeded;
@@ -407,7 +411,7 @@
             $jumpScr.style.display = 'flex';
 
             function processNext() {
-                if (firstPg <= target) {
+                if (curStart > endPg) {
                     busy = false;
                     
                     setTimeout(function() {
@@ -420,21 +424,19 @@
                     return;
                 }
 
-                var newFirst = Math.max(1, firstPg - BATCH);
-                var newLast = firstPg - 1;
+                var newFirst = curStart;
+                var newLast = Math.min(curStart + BATCH - 1, endPg);
 
                 extractChunk(newFirst, newLast, false, function() {
-                    firstPg = newFirst;
+                    curStart = newLast + 1;
                     
                     var trig = document.getElementById('ld-trig');
-                    if (firstPg <= 1) {
+                    if (newFirst <= 1) {
                         atStart = true;
                         if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; }
                     }
 
                     done += (newLast - newFirst + 1);
-                    if (done > totalNeeded) done = totalNeeded; 
-                    
                     $jumpDet.textContent = done + ' / ' + totalNeeded;
                     $jumpBar.style.width = ((done / totalNeeded) * 100) + '%';
 
@@ -535,8 +537,6 @@
                     return page.getTextContent().then(function(textContent) {
                         var text = parseTextItems(textContent.items);
                         
-                        // FIX: Use !== null so empty text pages still get a DOM element.
-                        // This prevents the page from vanishing and breaking scroll math.
                         if (text !== null) {
                             var div = document.createElement('div'); div.className = 'text-page'; div.setAttribute('data-pg', num);
                             div.innerHTML = '<div class="page-marker">Page ' + num + '</div>' + text;
@@ -552,8 +552,6 @@
                 }).catch(function(err) {
                     console.error('Failed page ' + num, err); 
                     
-                    // CRITICAL FIX: Force a placeholder so the page NEVER vanishes.
-                    // Vanishing pages cause teleporting scroll bugs.
                     var div = document.createElement('div'); 
                     div.className = 'text-page'; 
                     div.setAttribute('data-pg', num);
@@ -571,18 +569,22 @@
         function parseTextItems(items) {
             if (!items || !items.length) return null;
             var lines = {};
+            var lineOrder = []; 
+            
             items.forEach(function(item) {
                 var str = item.str.trim(); if (!str) return;
                 var y = Math.round(item.transform[5] / 2) * 2;
-                if (!lines[y]) lines[y] = [];
+                if (!lines[y]) {
+                    lines[y] = [];
+                    lineOrder.push(y); 
+                }
                 lines[y].push({ x: item.transform[4], text: str });
             });
 
-            var sortedYs = Object.keys(lines).sort(function(a, b) { return b - a; });
-            if (!sortedYs.length) return null;
+            if (!lineOrder.length) return null;
 
             var html = '';
-            sortedYs.forEach(function(y) {
+            lineOrder.forEach(function(y) {
                 lines[y].sort(function(a, b) { return a.x - b.x; });
                 var lineText = lines[y].map(function(t) { return t.text; }).join(' ');
                 
