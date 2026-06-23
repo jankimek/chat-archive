@@ -97,7 +97,13 @@
             flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
             padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));
             display:flex;align-items:center;gap:12px;z-index:10;
-            transition:background .3s,border-color .3s
+            transition:background .3s,border-color .3s;
+            position:relative
+        }
+        /* Background Cache Progress Bar */
+        .progress-bar{
+            position:absolute;top:0;left:0;height:3px;background:var(--accent);
+            width:0%;z-index:11;transition:width .3s linear, opacity 1s ease
         }
         .hdr-icon{
             width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent-h));
@@ -177,35 +183,16 @@
             filter:invert(1) hue-rotate(180deg)
         }
 
-        /* Floating Action Buttons */
-        .sb-btn, .bm-wrap{
+        .sb-btn{
             position:fixed;bottom:20px;bottom:max(20px,env(safe-area-inset-bottom));
-            height:44px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--fg);
+            right:16px;width:44px;height:44px;border-radius:50%;
+            background:var(--card);border:1px solid var(--border);color:var(--fg);
             display:none;align-items:center;justify-content:center;cursor:pointer;
             z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.4);
             transition:transform .15s,background .3s,border-color .3s
         }
-        .sb-btn{width:44px;right:16px}
         .sb-btn:active{transform:scale(.9);background:var(--border)}
         .sb-btn.on{display:flex}
-
-        /* Bookmark Resume Button */
-        .bm-wrap{
-            left:16px;width:auto;border-radius:24px;padding:0 6px 0 0;gap:8px;
-            animation:fadeUp .4s ease
-        }
-        .bm-wrap.on{display:flex}
-        .bm-circle{
-            width:44px;height:44px;border-radius:50%;flex-shrink:0;
-            display:flex;align-items:center;justify-content:center;
-            background:var(--accent);border:none;color:#0a0a0a
-        }
-        .bm-text{
-            padding-right:12px;font-size:12px;font-weight:600;white-space:nowrap;
-            color:var(--fg)
-        }
-        .bm-wrap:active{transform:scale(.95)}
-
         .toast{
             position:fixed;bottom:80px;left:50%;
             transform:translateX(-50%) translateY(80px);
@@ -221,7 +208,6 @@
             .pw-card,.pg-card{animation:none}
             .sp,.mini-sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
-            .bm-wrap{animation:none}
         }
     </style>
 </head>
@@ -262,6 +248,7 @@
 
     <div id="chat-view">
         <header class="ch-hdr">
+            <div class="progress-bar" id="progress-bar"></div>
             <div class="hdr-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -291,17 +278,6 @@
         </header>
         <div class="ch-scroll" id="ch-scroll"></div>
         
-        <!-- Resume Bookmark Button -->
-        <div class="bm-wrap" id="bm-wrap">
-            <div class="bm-text" id="bm-text">Resume page 1</div>
-            <div class="bm-circle">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
-            </div>
-        </div>
-
-        <!-- Scroll to bottom Button -->
         <button class="sb-btn" id="sb-btn" aria-label="Scroll to latest messages">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"/>
@@ -320,13 +296,18 @@
         var SCALE    = 2.0;  
         var JPG_Q    = 0.92; 
 
-        var pdf        = null;
-        var totalPgs   = 0;
-        var firstPg    = 1;
-        var busy       = false;
-        var atStart    = false;
-        var isDark     = true;
+        var pdf         = null;
+        var totalPgs    = 0;
+        var firstPg     = 1;
+        var busy        = false;
+        var atStart     = false;
+        var isDark      = true;
         var currentPage = 1;
+        
+        // Render pipeline management
+        var renderLock       = false;
+        var onRenderComplete = null;
+        var bgLoading        = false;
 
         var $pw      = document.getElementById('pw-screen');
         var $ld      = document.getElementById('ld-screen');
@@ -347,8 +328,8 @@
         var $icoMoon = document.getElementById('ico-moon');
         var $pgInput = document.getElementById('pg-input');
         var $pgTotal = document.getElementById('pg-total');
-        var $bmWrap  = document.getElementById('bm-wrap');
-        var $bmText  = document.getElementById('bm-text');
+        var $progress= document.getElementById('progress-bar');
+        var $meta    = document.querySelector('.pg-jumper'); // Reusing for progress text
 
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
@@ -430,16 +411,19 @@
                 return;
             }
 
-            // Hide bookmark button if they jump somewhere else manually
-            $bmWrap.classList.remove('on');
-
             var el = document.querySelector('[data-pg="' + target + '"]');
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth' });
                 return;
             }
 
-            if (target < firstPg) {
+            // Halt background loading to take priority
+            bgLoading = false; 
+
+            // If a render is currently happening, wait for it to finish safely
+            if (renderLock) {
+                onRenderComplete = function() { jumpToPage(target); };
+            } else if (target < firstPg) {
                 loadUpTo(target);
             }
         }
@@ -451,23 +435,9 @@
 
             var newFirst = Math.max(1, firstPg - BATCH);
             var newLast  = firstPg - 1;
-            var prevH    = $scroll.scrollHeight;
 
-            renderBatch(newFirst, newLast, false).then(function() {
+            renderBatch(newFirst, newLast, false, function() {
                 firstPg = newFirst;
-                $scroll.scrollTop = $scroll.scrollHeight - prevH;
-
-                var trig = document.getElementById('ld-trig');
-                if (firstPg <= 1) {
-                    atStart = true;
-                    if (trig) {
-                        trig.className = 'arc-start';
-                        trig.id = '';
-                        trig.innerHTML = 'Start of Archive';
-                    }
-                } else {
-                    if (trig) trig.innerHTML = '<span class="mini-sp"></span>Jumping to page ' + target + '...';
-                }
 
                 if (firstPg > target) {
                     setTimeout(function() { loadUpTo(target); }, 50);
@@ -480,12 +450,63 @@
                             if (trig && !atStart) trig.innerHTML = 'Scroll up to load earlier pages';
                         }, 100);
                     }
+                    // Resume background loading the rest of the document
+                    if (!atStart) {
+                        setTimeout(startBackgroundLoad, 1000);
+                    }
                 }
             });
         }
 
         /* =============================================
-           Update current page counter on scroll & SAVE BOOKMARK
+           Background Full-Document Loader
+           ============================================= */
+        function startBackgroundLoad() {
+            if (atStart || bgLoading || renderLock) return;
+            bgLoading = true;
+            
+            var newFirst = Math.max(1, firstPg - BATCH);
+            var newLast  = firstPg - 1;
+
+            renderBatch(newFirst, newLast, false, function() {
+                firstPg = newFirst;
+                updateBgProgress();
+                
+                // If jump interrupted us, stop looping
+                if (!bgLoading) return; 
+                
+                var trig = document.getElementById('ld-trig');
+                if (firstPg <= 1) {
+                    atStart = true;
+                    if (trig) {
+                        trig.className = 'arc-start';
+                        trig.id = '';
+                        trig.innerHTML = 'Start of Archive';
+                    }
+                    bgLoading = false;
+                    updateBgProgress();
+                } else {
+                    if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                    setTimeout(startBackgroundLoad, 10);
+                }
+            });
+        }
+
+        function updateBgProgress() {
+            if (atStart) {
+                $progress.style.width = '100%';
+                $pgTotal.textContent = totalPgs + ' (Cached)';
+                setTimeout(function() { $progress.style.opacity = '0'; }, 1000);
+            } else {
+                var loaded = totalPgs - firstPg + 1;
+                var pct = Math.floor((loaded / totalPgs) * 100);
+                $progress.style.width = pct + '%';
+                $pgTotal.textContent = totalPgs + ' (' + pct + '%)';
+            }
+        }
+
+        /* =============================================
+           Scroll Tracking
            ============================================= */
         var scrollTick = false;
         function updateCurrentPage() {
@@ -507,8 +528,6 @@
                 if (document.activeElement !== $pgInput) {
                     $pgInput.value = currentPage;
                 }
-                // Automatically save bookmark in background
-                localStorage.setItem('chat-arc-bookmark', currentPage);
             }
         }
 
@@ -545,18 +564,18 @@
                 $ldTxt.textContent = 'Rendering pages...';
                 $ldDet.textContent = '0 / ' + (end - start + 1);
 
-                renderBatch(start, end, true).then(function() {
+                renderBatch(start, end, true, function() {
                     $ld.style.display = 'none';
                     $cv.style.display = 'flex';
                     $pgInput.value = currentPage;
                     $scroll.scrollTop = $scroll.scrollHeight;
 
-                    // Check if user has a bookmark to resume
-                    var bookmark = parseInt(localStorage.getItem('chat-arc-bookmark'));
-                    // Only show if bookmark exists AND it's not the exact page they are already on
-                    if (bookmark && bookmark !== currentPage) {
-                        $bmText.textContent = 'Resume page ' + bookmark;
-                        $bmWrap.classList.add('on');
+                    if (atStart) {
+                        $progress.style.width = '100%';
+                        $pgTotal.textContent = totalPgs;
+                        setTimeout(function() { $progress.style.opacity = '0'; }, 500);
+                    } else {
+                        startBackgroundLoad();
                     }
                 });
             })
@@ -579,18 +598,11 @@
             });
         }
 
-        /* Bookmark Button Click */
-        $bmWrap.addEventListener('click', function() {
-            var bookmark = parseInt(localStorage.getItem('chat-arc-bookmark'));
-            if (bookmark) {
-                jumpToPage(bookmark);
-            }
-        });
-
         /* =============================================
-           SEQUENTIAL RENDER ENGINE (Memory Safe)
+           SEQUENTIAL RENDER ENGINE (Mutex Locked)
            ============================================= */
-        function renderBatch(from, to, initial) {
+        function renderBatch(from, to, initial, onComplete) {
+            renderLock = true;
             var count = to - from + 1;
             var done  = 0;
             var frag  = document.createDocumentFragment();
@@ -598,6 +610,8 @@
 
             function next() {
                 if (cur > to) {
+                    renderLock = false;
+                    
                     if (initial) {
                         $scroll.appendChild(frag);
                         if (firstPg > 1) {
@@ -620,6 +634,15 @@
                         } else {
                             $scroll.insertBefore(frag, $scroll.firstChild);
                         }
+                    }
+
+                    if (onComplete) onComplete();
+                    
+                    // Fire global interrupt if jump is waiting
+                    if (onRenderComplete) {
+                        var cb = onRenderComplete;
+                        onRenderComplete = null;
+                        cb();
                     }
                     return; 
                 }
@@ -661,7 +684,7 @@
                         card.appendChild(img);
                         frag.appendChild(card);
 
-                        // Instantly destroy canvas to free ~40MB RAM per page
+                        // Free memory
                         c.width = 0;
                         c.height = 0;
 
@@ -678,7 +701,7 @@
                 });
             }
 
-            return next();
+            next();
         }
 
         /* Scroll handling */
@@ -695,7 +718,8 @@
             if (fromBot > 600) { $sb.classList.add('on'); }
             else               { $sb.classList.remove('on'); }
 
-            if (!atStart && !busy && $scroll.scrollTop < 100) {
+            // Only trigger manual load older if background loader isn't already doing it
+            if (!atStart && !busy && !bgLoading && $scroll.scrollTop < 100) {
                 loadOlder();
             }
         });
@@ -707,11 +731,9 @@
 
             var newFirst = Math.max(1, firstPg - BATCH);
             var newLast  = firstPg - 1;
-            var prevH    = $scroll.scrollHeight;
 
-            renderBatch(newFirst, newLast, false).then(function() {
+            renderBatch(newFirst, newLast, false, function() {
                 firstPg = newFirst;
-                $scroll.scrollTop = $scroll.scrollHeight - prevH;
                 busy = false;
 
                 var trig = document.getElementById('ld-trig');
@@ -722,8 +744,15 @@
                         trig.id = '';
                         trig.innerHTML = 'Start of Archive';
                     }
+                    updateBgProgress();
                 } else {
                     if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
+                    // If user is still sitting at the top, keep loading. Otherwise switch to background.
+                    if ($scroll.scrollTop < 100) {
+                        loadOlder();
+                    } else {
+                        startBackgroundLoad();
+                    }
                 }
             });
         }
