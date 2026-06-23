@@ -106,8 +106,6 @@
         }
         .hdr-info{flex:1;min-width:0}
         .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
-        
-        /* Page Jumper Styles */
         .pg-jumper{
             display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px
         }
@@ -287,8 +285,8 @@
 
         var PDF_FILE = 'chat.pdf';
         var BATCH    = 50;
-        var SCALE    = 2.0;  /* Increased for high quality (was 1.2) */
-        var JPG_Q    = 0.92; /* Increased JPEG quality (was 0.85) */
+        var SCALE    = 2.0;  
+        var JPG_Q    = 0.92; 
 
         var pdf        = null;
         var totalPgs   = 0;
@@ -318,7 +316,6 @@
         var $pgInput = document.getElementById('pg-input');
         var $pgTotal = document.getElementById('pg-total');
 
-        /* Restore saved theme */
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
             isDark = false;
@@ -327,7 +324,6 @@
             $icoMoon.style.display = 'block';
         }
 
-        /* Theme toggle */
         $themeB.addEventListener('click', function() {
             isDark = !isDark;
             if (isDark) {
@@ -343,7 +339,6 @@
             }
         });
 
-        /* Eye toggle */
         $eyeB.addEventListener('click', function() {
             var show = $pwIn.type === 'password';
             $pwIn.type = show ? 'text' : 'password';
@@ -380,17 +375,16 @@
         $pgInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                this.blur(); // Hide keyboard on Android
+                this.blur(); 
                 jumpToPage(this.value);
             }
         });
 
-        // If they tap away, try to jump
         $pgInput.addEventListener('blur', function() {
             if (this.value != currentPage) {
                 jumpToPage(this.value);
             } else {
-                this.value = currentPage; // Revert invalid typing
+                this.value = currentPage; 
             }
         });
 
@@ -402,20 +396,17 @@
                 return;
             }
 
-            // Is it already in the DOM?
             var el = document.querySelector('[data-pg="' + target + '"]');
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth' });
                 return;
             }
 
-            // Not in DOM. We need to load backwards until we hit it.
             if (target < firstPg) {
                 loadUpTo(target);
             }
         }
 
-        // Recursively load batches backwards until target page is reached
         function loadUpTo(target) {
             busy = true;
             var trig = document.getElementById('ld-trig');
@@ -427,8 +418,6 @@
 
             renderBatch(newFirst, newLast, false).then(function() {
                 firstPg = newFirst;
-
-                // Keep user looking at current content while loading in background
                 $scroll.scrollTop = $scroll.scrollHeight - prevH;
 
                 var trig = document.getElementById('ld-trig');
@@ -443,12 +432,9 @@
                     if (trig) trig.innerHTML = '<span class="mini-sp"></span>Jumping to page ' + target + '...';
                 }
 
-                // Did we reach the target yet?
                 if (firstPg > target) {
-                    // Let the browser breathe, then load the next batch
                     setTimeout(function() { loadUpTo(target); }, 50);
                 } else {
-                    // Done! Scroll to it
                     busy = false;
                     var el = document.querySelector('[data-pg="' + target + '"]');
                     if (el) {
@@ -462,7 +448,7 @@
         }
 
         /* =============================================
-           Update current page number in header
+           Update current page counter on scroll
            ============================================= */
         var scrollTick = false;
         function updateCurrentPage() {
@@ -472,17 +458,15 @@
             
             for (var i = 0; i < cards.length; i++) {
                 var rect = cards[i].getBoundingClientRect();
-                // If top of card is above halfway point of screen
                 if (rect.top <= scrollRect.top + 100) {
                     current = parseInt(cards[i].getAttribute('data-pg'));
                 } else {
-                    break; // Optimisation: stop checking once we pass the visible area
+                    break; 
                 }
             }
             
             if (current !== currentPage) {
                 currentPage = current;
-                // Don't overwrite if user is currently typing in the box
                 if (document.activeElement !== $pgInput) {
                     $pgInput.value = currentPage;
                 }
@@ -517,7 +501,7 @@
                 var start = Math.max(1, totalPgs - BATCH + 1);
                 var end   = totalPgs;
                 firstPg   = start;
-                currentPage = end; // Start at latest page
+                currentPage = end; 
 
                 $ldTxt.textContent = 'Rendering pages...';
                 $ldDet.textContent = '0 / ' + (end - start + 1);
@@ -548,93 +532,102 @@
             });
         }
 
-        /* Render a batch of pages */
+        /* =============================================
+           SEQUENTIAL RENDER ENGINE (Memory Safe)
+           ============================================= */
         function renderBatch(from, to, initial) {
             var count = to - from + 1;
             var done  = 0;
             var frag  = document.createDocumentFragment();
-            var jobs  = [];
+            var cur   = from;
 
-            for (var p = from; p <= to; p++) {
-                (function(num) {
-                    jobs.push(
-                        pdf.getPage(num).then(function(page) {
-                            var vp = page.getViewport({ scale: SCALE });
-                            var c  = document.createElement('canvas');
-                            c.width  = Math.floor(vp.width);
-                            c.height = Math.floor(vp.height);
+            function next() {
+                if (cur > to) {
+                    if (initial) {
+                        $scroll.appendChild(frag);
+                        if (firstPg > 1) {
+                            var t = document.createElement('div');
+                            t.className = 'ld-trigger';
+                            t.id = 'ld-trig';
+                            t.textContent = 'Scroll up to load earlier pages';
+                            $scroll.insertBefore(t, $scroll.firstChild);
+                        } else {
+                            atStart = true;
+                            var m = document.createElement('div');
+                            m.className = 'arc-start';
+                            m.textContent = 'Start of Archive';
+                            $scroll.insertBefore(m, $scroll.firstChild);
+                        }
+                    } else {
+                        var trig = document.getElementById('ld-trig');
+                        if (trig) {
+                            $scroll.insertBefore(frag, trig);
+                        } else {
+                            $scroll.insertBefore(frag, $scroll.firstChild);
+                        }
+                    }
+                    return; // Resolves the chain
+                }
 
-                            return page.render({
-                                canvasContext: c.getContext('2d'),
-                                viewport: vp
-                            })
-                            .promise.then(function() {
-                                // Invert colors for dark mode
-                                if (isDark) {
-                                    var ctx = c.getContext('2d');
-                                    ctx.globalCompositeOperation = 'difference';
-                                    ctx.fillStyle = '#ffffff';
-                                    ctx.fillRect(0, 0, c.width, c.height);
-                                    ctx.globalCompositeOperation = 'source-over';
-                                }
+                var num = cur;
+                cur++;
 
-                                var img = document.createElement('img');
-                                img.src = c.toDataURL('image/jpeg', JPG_Q);
-                                img.alt = 'Page ' + num;
+                return pdf.getPage(num).then(function(page) {
+                    var vp = page.getViewport({ scale: SCALE });
+                    var c  = document.createElement('canvas');
+                    c.width  = Math.floor(vp.width);
+                    c.height = Math.floor(vp.height);
 
-                                var card = document.createElement('div');
-                                card.className = 'pg-card';
-                                card.setAttribute('data-pg', num);
+                    return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
+                    .promise.then(function() {
+                        if (isDark) {
+                            var ctx = c.getContext('2d');
+                            ctx.globalCompositeOperation = 'difference';
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, c.width, c.height);
+                            ctx.globalCompositeOperation = 'source-over';
+                        }
 
-                                var head = document.createElement('div');
-                                head.className = 'pg-head';
-                                head.innerHTML =
-                                    '<span class="pg-tag">Page ' + num + '</span>' +
-                                    '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
+                        var img = document.createElement('img');
+                        img.src = c.toDataURL('image/jpeg', JPG_Q);
+                        img.alt = 'Page ' + num;
 
-                                card.appendChild(head);
-                                card.appendChild(img);
-                                frag.appendChild(card);
+                        var card = document.createElement('div');
+                        card.className = 'pg-card';
+                        card.setAttribute('data-pg', num);
 
-                                done++;
-                                if (initial) $ldDet.textContent = done + ' / ' + count;
-                            });
-                        })
-                    );
-                })(p);
+                        var head = document.createElement('div');
+                        head.className = 'pg-head';
+                        head.innerHTML =
+                            '<span class="pg-tag">Page ' + num + '</span>' +
+                            '<span class="pg-num">' + num + ' / ' + totalPgs + '</span>';
+
+                        card.appendChild(head);
+                        card.appendChild(img);
+                        frag.appendChild(card);
+
+                        // CRITICAL: Instantly destroy canvas to free ~40MB RAM
+                        c.width = 0;
+                        c.height = 0;
+
+                        done++;
+                        if (initial) $ldDet.textContent = done + ' / ' + count;
+
+                        return next(); // Process next page
+                    });
+                }).catch(function(err) {
+                    console.error('Failed to render page ' + num, err);
+                    done++;
+                    if (initial) $ldDet.textContent = done + ' / ' + count;
+                    return next(); // Skip bad page and keep going
+                });
             }
 
-            return Promise.all(jobs).then(function() {
-                if (initial) {
-                    $scroll.appendChild(frag);
-
-                    if (firstPg > 1) {
-                        var t = document.createElement('div');
-                        t.className = 'ld-trigger';
-                        t.id = 'ld-trig';
-                        t.textContent = 'Scroll up to load earlier pages';
-                        $scroll.insertBefore(t, $scroll.firstChild);
-                    } else {
-                        atStart = true;
-                        var m = document.createElement('div');
-                        m.className = 'arc-start';
-                        m.textContent = 'Start of Archive';
-                        $scroll.insertBefore(m, $scroll.firstChild);
-                    }
-                } else {
-                    var trig = document.getElementById('ld-trig');
-                    if (trig) {
-                        $scroll.insertBefore(frag, trig);
-                    } else {
-                        $scroll.insertBefore(frag, $scroll.firstChild);
-                    }
-                }
-            });
+            return next();
         }
 
         /* Scroll handling */
         $scroll.addEventListener('scroll', function() {
-            // Update page counter (throttled with rAF for performance)
             if (!scrollTick) {
                 requestAnimationFrame(function() {
                     updateCurrentPage();
