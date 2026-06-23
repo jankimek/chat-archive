@@ -30,11 +30,9 @@
             transition:background .3s,color .3s
         }
 
-        /* === PASSWORD SCREEN === */
         #pw-screen{
             position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-            background:var(--bg);z-index:100;padding:20px;
-            transition:background .3s
+            background:var(--bg);z-index:100;padding:20px;transition:background .3s
         }
         #pw-screen::before{
             content:'';position:absolute;width:420px;height:420px;border-radius:50%;
@@ -84,7 +82,6 @@
         .go-btn:active{transform:scale(.97);background:var(--accent-h)}
         .go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-        /* === LOADING SCREEN === */
         #ld-screen{
             position:fixed;inset:0;display:none;flex-direction:column;
             align-items:center;justify-content:center;background:var(--bg);z-index:90;
@@ -95,7 +92,6 @@
         .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
         .ld-det{font-size:12px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
 
-        /* === CHAT VIEW === */
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
         .ch-hdr{
             flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);
@@ -160,14 +156,14 @@
         .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
         .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
 
-        /* === PDF page images — inverted in dark mode === */
+        /* PDF page images: no CSS filter in dark mode (already inverted in JS) */
         .pg-card img{
             width:100%;display:block;min-height:80px;background:var(--bg);
-            filter:invert(1) hue-rotate(180deg);
             transition:filter .3s,background .3s
         }
+        /* In light mode, CSS filter reverses the JS inversion back to original colors */
         :root.light .pg-card img{
-            filter:none
+            filter:invert(1) hue-rotate(180deg)
         }
 
         .sb-btn{
@@ -200,7 +196,6 @@
 </head>
 <body>
 
-    <!-- ========== PASSWORD SCREEN ========== -->
     <div id="pw-screen">
         <div class="pw-card">
             <div class="lock-wrap">
@@ -228,14 +223,12 @@
         </div>
     </div>
 
-    <!-- ========== LOADING SCREEN ========== -->
     <div id="ld-screen">
         <div class="sp"></div>
         <div class="ld-txt" id="ld-txt">Decrypting archive...</div>
         <div class="ld-det" id="ld-det"></div>
     </div>
 
-    <!-- ========== CHAT VIEW ========== -->
     <div id="chat-view">
         <header class="ch-hdr">
             <div class="hdr-icon">
@@ -269,36 +262,24 @@
         </button>
     </div>
 
-    <!-- Toast -->
     <div class="toast" id="toast-el"></div>
 
     <script>
-        /* =============================================
-           PDF.js worker setup
-           ============================================= */
         pdfjsLib.GlobalWorkerOptions.workerSrc =
             'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        /* =============================================
-           CONFIGURATION — change these if needed
-           ============================================= */
-        var PDF_FILE    = 'chat.pdf';
-        var BATCH       = 50;
-        var SCALE       = 1.2;
-        var JPG_Q       = 0.85;
+        var PDF_FILE = 'chat.pdf';
+        var BATCH    = 50;
+        var SCALE    = 1.2;
+        var JPG_Q    = 0.85;
 
-        /* =============================================
-           App state
-           ============================================= */
-        var pdf        = null;
-        var totalPgs   = 0;
-        var firstPg    = 1;
-        var busy       = false;
-        var atStart    = false;
+        var pdf      = null;
+        var totalPgs = 0;
+        var firstPg  = 1;
+        var busy     = false;
+        var atStart  = false;
+        var isDark   = true;
 
-        /* =============================================
-           DOM handles
-           ============================================= */
         var $pw     = document.getElementById('pw-screen');
         var $ld     = document.getElementById('ld-screen');
         var $cv     = document.getElementById('chat-view');
@@ -314,15 +295,11 @@
         var $meta   = document.getElementById('hdr-meta');
         var $sb     = document.getElementById('sb-btn');
         var $toast  = document.getElementById('toast-el');
+        var $themeB = document.getElementById('theme-b');
+        var $icoSun = document.getElementById('ico-sun');
+        var $icoMoon= document.getElementById('ico-moon');
 
-        /* =============================================
-           Theme toggle
-           ============================================= */
-        var $themeB  = document.getElementById('theme-b');
-        var $icoSun  = document.getElementById('ico-sun');
-        var $icoMoon = document.getElementById('ico-moon');
-        var isDark   = true;
-
+        /* Restore saved theme */
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
             isDark = false;
@@ -331,6 +308,7 @@
             $icoMoon.style.display = 'block';
         }
 
+        /* Theme toggle */
         $themeB.addEventListener('click', function() {
             isDark = !isDark;
             if (isDark) {
@@ -346,9 +324,7 @@
             }
         });
 
-        /* =============================================
-           Password screen interactions
-           ============================================= */
+        /* Eye toggle */
         $eyeB.addEventListener('click', function() {
             var show = $pwIn.type === 'password';
             $pwIn.type = show ? 'text' : 'password';
@@ -379,9 +355,7 @@
             tryLoad(v);
         });
 
-        /* =============================================
-           Toast helper
-           ============================================= */
+        /* Toast */
         var _tt = null;
         function toast(msg, err) {
             clearTimeout(_tt);
@@ -392,9 +366,7 @@
             _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
         }
 
-        /* =============================================
-           Load & decrypt the PDF
-           ============================================= */
+        /* Load PDF */
         function tryLoad(pw) {
             $pw.style.display = 'none';
             $ld.style.display = 'flex';
@@ -439,9 +411,7 @@
             });
         }
 
-        /* =============================================
-           Render a batch of PDF pages into cards
-           ============================================= */
+        /* Render a batch of pages */
         function renderBatch(from, to, initial) {
             var count = to - from + 1;
             var done  = 0;
@@ -457,8 +427,28 @@
                             c.width  = Math.floor(vp.width);
                             c.height = Math.floor(vp.height);
 
-                            return page.render({ canvasContext: c.getContext('2d'), viewport: vp })
+                            return page.render({
+                                canvasContext: c.getContext('2d'),
+                                viewport: vp
+                            })
                             .promise.then(function() {
+
+                                /* 
+                                   Invert colors in JavaScript so the page 
+                                   is black background with white text.
+                                   Uses canvas 'difference' blend mode — 
+                                   drawing white over the image mathematically 
+                                   inverts every pixel. This is hardware-
+                                   accelerated and works on all Android versions.
+                                */
+                                if (isDark) {
+                                    var ctx = c.getContext('2d');
+                                    ctx.globalCompositeOperation = 'difference';
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.fillRect(0, 0, c.width, c.height);
+                                    ctx.globalCompositeOperation = 'source-over';
+                                }
+
                                 var img = document.createElement('img');
                                 img.src = c.toDataURL('image/jpeg', JPG_Q);
                                 img.alt = 'Page ' + num;
@@ -513,9 +503,7 @@
             });
         }
 
-        /* =============================================
-           Scroll — load older pages when near top
-           ============================================= */
+        /* Scroll handling */
         $scroll.addEventListener('scroll', function() {
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
             if (fromBot > 600) { $sb.classList.add('on'); }
@@ -556,9 +544,7 @@
             });
         }
 
-        /* =============================================
-           Scroll-to-bottom button
-           ============================================= */
+        /* Scroll to bottom */
         $sb.addEventListener('click', function() {
             $scroll.scrollTo({ top: $scroll.scrollHeight, behavior: 'smooth' });
         });
