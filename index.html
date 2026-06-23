@@ -80,7 +80,6 @@
         .go-btn:active{transform:scale(.97);background:var(--accent-h)}
         .go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-        /* Initial & Jump Loading Screens */
         .ld-screen{
             position:fixed;inset:0;display:none;flex-direction:column;
             align-items:center;justify-content:center;background:var(--bg);z-index:90;
@@ -91,15 +90,8 @@
         .ld-txt{font-size:15px;font-weight:500;color:var(--fg2)}
         .ld-det{font-size:13px;color:var(--muted);margin-top:8px;font-variant-numeric:tabular-nums}
         
-        /* Jump Progress Bar */
-        .jump-bar-wrap{
-            width:240px;height:6px;background:var(--border);border-radius:3px;
-            margin-top:20px;overflow:hidden
-        }
-        .jump-bar{
-            height:100%;background:var(--accent);width:0%;
-            transition:width .1s linear
-        }
+        .jump-bar-wrap{width:240px;height:6px;background:var(--border);border-radius:3px;margin-top:20px;overflow:hidden}
+        .jump-bar{height:100%;background:var(--accent);width:0%;transition:width .1s linear}
 
         #chat-view{display:none;flex-direction:column;height:100vh;height:100dvh}
         .ch-hdr{
@@ -115,9 +107,7 @@
         }
         .hdr-info{flex:1;min-width:0}
         .hdr-info h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
-        .pg-jumper{
-            display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px
-        }
+        .pg-jumper{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:2px}
         .pg-input{
             width:42px;padding:2px 4px;background:var(--bg);border:1px solid var(--border);
             border-radius:4px;color:var(--fg);font-size:12px;font-family:inherit;
@@ -145,9 +135,7 @@
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-        .text-page{
-            padding:12px 0;border-bottom:1px solid var(--border)
-        }
+        .text-page{padding:12px 0;border-bottom:1px solid var(--border)}
         .page-marker{
             display:inline-block;background:var(--accent);color:#0a0a0a;
             font-size:10px;font-weight:700;padding:2px 8px;
@@ -247,14 +235,12 @@
         </div>
     </div>
 
-    <!-- Initial Load Screen -->
     <div class="ld-screen" id="ld-screen">
         <div class="sp"></div>
         <div class="ld-txt" id="ld-txt">Decrypting archive...</div>
         <div class="ld-det" id="ld-det"></div>
     </div>
 
-    <!-- Jump Load Screen -->
     <div class="ld-screen" id="jump-screen">
         <div class="sp"></div>
         <div class="ld-txt" id="jump-txt">Jumping to page 1...</div>
@@ -342,7 +328,6 @@
         var $pgInput = document.getElementById('pg-input');
         var $pgTotal = document.getElementById('pg-total');
 
-        /* Theme Setup */
         var saved = localStorage.getItem('chat-arc-theme');
         if (saved === 'light') {
             isDark = false;
@@ -366,7 +351,6 @@
             }
         });
 
-        /* Password Screen */
         $eyeB.addEventListener('click', function() {
             var show = $pwIn.type === 'password';
             $pwIn.type = show ? 'text' : 'password';
@@ -404,7 +388,6 @@
             var el = document.querySelector('[data-pg="' + target + '"]');
             if (el) { el.scrollIntoView({ behavior: 'smooth' }); return; }
 
-            // Must load backwards to reach target
             if (target < firstPg && !busy) {
                 loadUpTo(target);
             } else if (busy) {
@@ -418,7 +401,6 @@
             var totalNeeded = firstPg - target;
             var done = 0;
             
-            // Show Jump Progress Screen
             $jumpTxt.textContent = 'Jumping to page ' + target + '...';
             $jumpDet.textContent = '0 / ' + totalNeeded;
             $jumpBar.style.width = '0%';
@@ -427,12 +409,17 @@
             function processNext() {
                 if (firstPg <= target) {
                     busy = false;
-                    $jumpScr.style.display = 'none';
                     
-                    var el = document.querySelector('[data-pg="' + target + '"]');
-                    if (el) {
-                        setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 100);
-                    }
+                    // Give Android a brief moment to calculate layout of the newly inserted pages
+                    setTimeout(function() {
+                        var el = document.querySelector('[data-pg="' + target + '"]');
+                        if (el) {
+                            // Instantly snap to the target page while still hidden behind the jump screen
+                            el.scrollIntoView({ behavior: 'auto' }); 
+                        }
+                        // Reveal the chat view
+                        $jumpScr.style.display = 'none';
+                    }, 50);
                     return;
                 }
 
@@ -449,35 +436,38 @@
                     }
 
                     done += (newLast - newFirst + 1);
-                    if (done > totalNeeded) done = totalNeeded; // Clamp math
+                    if (done > totalNeeded) done = totalNeeded; 
                     
                     $jumpDet.textContent = done + ' / ' + totalNeeded;
                     $jumpBar.style.width = ((done / totalNeeded) * 100) + '%';
 
-                    setTimeout(processNext, 10); // Let UI update
+                    setTimeout(processNext, 10); 
                 });
             }
             processNext();
         }
 
-        /* Scroll Tracking */
+        /* Ultra-fast Scroll Tracking */
         var scrollTick = false;
         function updateCurrentPage() {
-            var pages = $scroll.querySelectorAll('[data-pg]');
-            var current = 1;
-            var scrollRect = $scroll.getBoundingClientRect();
-            for (var i = 0; i < pages.length; i++) {
-                var rect = pages[i].getBoundingClientRect();
-                if (rect.top <= scrollRect.top + 100) current = parseInt(pages[i].getAttribute('data-pg'));
-                else break; 
-            }
-            if (current !== currentPage) {
-                currentPage = current;
+            // Check a point slightly below the top of the screen (0ms instead of looping 3000 elements)
+            var el = document.elementFromPoint(window.innerWidth / 2, 150);
+            if (!el) return;
+            
+            var pageEl = el.closest('[data-pg]');
+            if (pageEl) {
+                var pg = parseInt(pageEl.getAttribute('data-pg'));
+                if (pg !== currentPage) {
+                    currentPage = pg;
+                    if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
+                }
+            } else if ($scroll.scrollTop < 50) {
+                // Fallback if at the absolute top
+                currentPage = firstPg;
                 if (document.activeElement !== $pgInput) $pgInput.value = currentPage;
             }
         }
 
-        /* Toast */
         var _tt = null;
         function toast(msg, err) {
             clearTimeout(_tt); $toast.textContent = msg;
@@ -486,7 +476,6 @@
             _tt = setTimeout(function() { $toast.classList.remove('on'); }, 3500);
         }
 
-        /* Load PDF */
         function tryLoad(pw) {
             $pw.style.display = 'none'; $ld.style.display = 'flex';
             $ldTxt.textContent = 'Decrypting archive...'; $ldDet.textContent = '';
@@ -519,9 +508,6 @@
             });
         }
 
-        /* =============================================
-           Core Extraction Engine
-           ============================================= */
         function extractChunk(from, to, isInitial, onComplete) {
             var count = to - from + 1;
             var done = 0;
@@ -621,6 +607,7 @@
             if (!scrollTick) { requestAnimationFrame(function() { updateCurrentPage(); scrollTick = false; }); scrollTick = true; }
             var fromBot = $scroll.scrollHeight - $scroll.scrollTop - $scroll.clientHeight;
             if (fromBot > 600) $sb.classList.add('on'); else $sb.classList.remove('on');
+            
             if (!atStart && !busy && $scroll.scrollTop < 100) loadOlder();
         });
 
@@ -631,12 +618,21 @@
 
             var newFirst = Math.max(1, firstPg - BATCH);
             var newLast = firstPg - 1;
+            
+            // CRITICAL FIX: Measure height BEFORE inserting so we can adjust scroll position AFTER
+            var prevH = $scroll.scrollHeight;
 
             extractChunk(newFirst, newLast, false, function() {
-                firstPg = newFirst; busy = false;
+                firstPg = newFirst; 
+                busy = false;
+                
+                // CRITICAL FIX: Adjust scroll so the user stays looking at the same text
+                $scroll.scrollTop = $scroll.scrollHeight - prevH;
+
                 var trig = document.getElementById('ld-trig');
                 if (firstPg <= 1) {
-                    atStart = true; if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; }
+                    atStart = true; 
+                    if (trig) { trig.className = 'arc-start'; trig.id = ''; trig.innerHTML = 'Start of Archive'; }
                 } else {
                     if (trig) trig.innerHTML = 'Scroll up to load earlier pages';
                 }
