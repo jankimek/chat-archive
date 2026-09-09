@@ -146,6 +146,11 @@
         #hdr-meta::-webkit-inner-spin-button {-webkit-appearance:none;margin:0}
         #hdr-meta:focus {border-color:var(--accent);color:var(--fg)}
 
+        .pg-jump{display:flex;align-items:center;gap:5px}
+.pg-jump svg{color:var(--muted);flex-shrink:0;transition:color .2s;cursor:pointer;animation:tapHint 5s ease-in-out infinite}
+.pg-jump:hover svg,.pg-jump:active svg{color:var(--accent)}
+@keyframes tapHint{0%,90%,100%{transform:translateY(0)}94%{transform:translateY(-2.5px)}97%{transform:translateY(0)}}
+        
         .progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;pointer-events:none}
         #prog-fill{height:100%;width:0;background:var(--accent);transition:width .2s;opacity:.85}
 
@@ -408,6 +413,7 @@
         .lb-date{font-size:10px;color:var(--muted);flex-shrink:0;width:46px;text-align:right}
 
         @media(prefers-reduced-motion:reduce){
+            .pg-jump svg{animation:none}
             .pw-card,.pg-card{animation:none}
             .sp,.mini-sp{animation-duration:1.5s}
             .inp-wrap input.shake{animation:none}
@@ -478,9 +484,21 @@
                 </svg>
             </div>
             <div class="hdr-info">
-                <h2>Chat Archive</h2>
-                <input type="number" id="hdr-meta" value="0" min="1" aria-label="Jump to page">
-            </div>
+    <h2>Chat Archive</h2>
+    <div class="pg-jump" id="pg-jump">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.5 4.2 4.9 5.6"/>
+            <path d="M8.2 1.2v2.4"/>
+            <path d="M14 4.2 11.6 5.6"/>
+            <path d="M6.5 15V8.5a1.75 1.75 0 0 1 3.5 0V15"/>
+            <path d="M10 12.5v-1.2a1.7 1.7 0 0 1 3.4 0V15"/>
+            <path d="M13.4 13.6v-.8a1.65 1.65 0 0 1 3.3 0V15"/>
+            <path d="M16.7 14.4v-.4a1.55 1.55 0 0 1 3.1 0V15"/>
+            <path d="M6.5 15v2.4a3 3 0 0 0 3 3h7.3a3 3 0 0 0 3-3V15"/>
+        </svg>
+        <input type="number" id="hdr-meta" value="0" min="1" aria-label="Jump to page">
+    </div>
+</div>
             <button class="theme-btn" id="game-b" aria-label="Mini games">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="7" width="20" height="10" rx="5"/>
@@ -1134,6 +1152,12 @@
                 }
             }
         });
+        /* Tap the hand icon to focus the page jump input */
+document.getElementById('pg-jump').addEventListener('click', function(e) {
+    if (e.target === $meta) return;
+    $meta.focus();
+    $meta.select();
+});
 
         function goToPage(targetPg, opts) {
             opts = opts || {};
