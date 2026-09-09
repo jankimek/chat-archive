@@ -362,8 +362,7 @@
         .lo-grid button.on{background:var(--accent);border-color:var(--accent)}
 
         /* On-screen controls for mobile */
-        .dp{display:grid;grid-template-columns:repeat(3,58px);grid-auto-rows:46px;gap:6px;justify-content:center;margin-top:12px;touch-action:none}
-        .dp button:first-child{grid-column:2}
+        .dp{display:grid;grid-template-columns:repeat(3,60px);grid-auto-rows:50px;gap:8px;justify-content:center;margin-top:12px;touch-action:none}
         .dp button,.dp-row button{
             border-radius:10px;border:1px solid var(--border);background:var(--bg);
             color:var(--fg);font-size:16px;cursor:pointer;touch-action:none;
@@ -609,30 +608,17 @@
 
         /* =============================================
            GLOBAL LEADERBOARD — Firebase config
-           ------------------------------------------------
-           1. console.firebase.google.com → new project
-           2. Build → Realtime Database → Create → enable
-           3. Rules tab → paste the rules from the setup
-              guide → Publish
-           4. Project settings → Your apps → Web (</>) →
-              copy the firebaseConfig values below.
-           5. If databaseURL is missing from the snippet,
-              take it from the Realtime Database page URL,
-              e.g. "https://YOURPROJECT-default-rtdb.firebaseio.com"
-
-           Until filled in, the leaderboard silently falls
-           back to device-local storage. Nothing breaks.
            ============================================= */
         var FIREBASE_CONFIG = {
-        apiKey:            "AIzaSyCEhQ0MPvNq2vlDH4-wMLU_ePgezGj851c",
-        authDomain:        "chat-archive-b231b.firebaseapp.com",
-        databaseURL:       "https://chat-archive-b231b-default-rtdb.firebaseio.com",
-        projectId:         "chat-archive-b231b",
-        storageBucket:     "chat-archive-b231b.firebasestorage.app",
-        messagingSenderId: "895195672571",
-        appId:             "1:895195672571:web:310c32b791a3609408655e"
+            apiKey:            "AIzaSyCEhQ0MPvNq2vlDH4-wMLU_ePgezGj851c",
+            authDomain:        "chat-archive-b231b.firebaseapp.com",
+            databaseURL:       "https://chat-archive-b231b-default-rtdb.firebaseio.com",
+            projectId:         "chat-archive-b231b",
+            storageBucket:     "chat-archive-b231b.firebasestorage.app",
+            messagingSenderId: "895195672571",
+            appId:             "1:895195672571:web:310c32b791a3609408655e"
         };
-        var LB_PATH = 'scores'; // where scores live in the database
+        var LB_PATH = 'scores';
 
         /* =============================================
            App state
@@ -1104,7 +1090,6 @@
 
         /* =============================================
            Keyboard shortcuts (reader)
-           Skipped entirely while a mini-game is open.
            ============================================= */
         document.addEventListener('keydown', function(e) {
             if ($gModal.style.display === 'flex') return;
@@ -1543,11 +1528,12 @@
            =====================================================
              MINI GAMES + GLOBAL LEADERBOARD
            -----------------------------------------------------
-           Each game registers itself via registerGame(id, def).
-           def = { name, icon, hsKey?, lbLower?, init(root) }
-           lbLower = true → leaderboard ranks by FEWEST points
-           (e.g. Lights Out moves). Scores go to Firebase if
-           configured; otherwise fall back to device storage.
+           NOTE ON SPEED: canvas games (Flappy, Breakout) use a
+           FIXED-TIMESTEP loop — physics always run at 60 steps
+           per second no matter the screen refresh rate, so the
+           game speed is identical on 60Hz and 120Hz devices.
+           Each game has a TUNING block at the top of its init()
+           if you want to make anything faster or slower.
            =====================================================
            ===================================================== */
         var GAMES = {};
@@ -1600,7 +1586,6 @@
             var name = getUsername() || 'Guest';
             var t = Date.now();
 
-            // Always keep a device-local copy (feeds the offline view)
             try {
                 var lb = localLb();
                 var arr = lb[id] || [];
@@ -1612,7 +1597,7 @@
             } catch (e) {}
 
             if (fbOn()) {
-                if (t - _lastSub < 1500) return; // guard against double-fires
+                if (t - _lastSub < 1500) return;
                 _lastSub = t;
                 fbDb.ref(LB_PATH + '/' + id).push({ n: name, s: score, t: t }, function(err) {
                     if (err) {
@@ -1620,7 +1605,6 @@
                         toast('Saved on this device (global sync failed)', true);
                         return;
                     }
-                    // Let the write propagate, then announce global rank
                     setTimeout(function() { fetchRank(id, score, name); }, 1200);
                 });
             } else {
@@ -1638,8 +1622,7 @@
             }).catch(function() {});
         }
 
-        /* --- Live subscription for the leaderboard view ---
-           cb(list, live) — list is best-first, live=true if Firebase */
+        /* --- Live subscription for the leaderboard view --- */
         var _lbUnsub = null;
         function watchLbOff() {
             if (_lbUnsub) { try { _lbUnsub(); } catch (e) {} _lbUnsub = null; }
@@ -1657,7 +1640,7 @@
             var handler = function(snap) {
                 var list = [];
                 snap.forEach(function(c) { list.push(c.val()); });
-                if (!GAMES[id].lbLower) list.reverse(); // best first
+                if (!GAMES[id].lbLower) list.reverse();
                 cb(list, true);
             };
             q.on('value', handler, function(err) {
@@ -1720,6 +1703,29 @@
             root.appendChild(c);
             return { c: c, ctx: ctx, w: w, h: h };
         }
+        /* Fixed-timestep loop runner: physics at exactly 60 steps/s,
+           rendering once per animation frame. STEP_MS is the physics
+           tick; maxSteps prevents runaway catch-up after tab stalls. */
+        function fixedLoop(physics, draw, isRunning) {
+            var STEP_MS = 1000 / 60;
+            var acc = 0, last = 0, raf = 0;
+            function reset() { last = 0; acc = 0; }
+            function frame(now) {
+                if (!last) last = now;
+                var delta = now - last;
+                last = now;
+                if (delta > 100) delta = STEP_MS; // ignore tab-switch gaps
+                acc += delta;
+                var n = 0;
+                while (acc >= STEP_MS && n < 4) { physics(); acc -= STEP_MS; n++; }
+                draw();
+                if (isRunning()) raf = requestAnimationFrame(frame);
+            }
+            return {
+                start: function() { cancelAnimationFrame(raf); reset(); raf = requestAnimationFrame(frame); },
+                stop:  function() { cancelAnimationFrame(raf); reset(); }
+            };
+        }
         function swipe(el, cb) {
             var ts = null;
             el.addEventListener('touchstart', function(e) {
@@ -1739,6 +1745,12 @@
         registerGame('snake', {
             name: 'Snake', icon: '🐍', hsKey: 'chat-arc-hs-snake',
             init: function(root) {
+                /* TUNING — snake speed (ms per step; lower = faster) */
+                var START_MS   = 160;  // starting speed (was 115 — too fast)
+                var MIN_MS     = 105;  // fastest it ever gets
+                var RAMP_EVERY = 5;    // foods eaten per speed-up
+                var RAMP_MS    = 8;    // ms faster per ramp
+
                 var N = 15, CELL = 20, W = N * CELL;
                 var cv = makeCanvas(root, W, W), ctx = cv.ctx;
                 var bar = gameBar(root);
@@ -1752,7 +1764,7 @@
                 function reset() {
                     snake = [{x:7,y:9},{x:6,y:9},{x:5,y:9}];
                     dir = {x:1,y:0}; ndir = dir;
-                    score = 0; dead = false; started = false; eaten = 0; speed = 115;
+                    score = 0; dead = false; started = false; eaten = 0; speed = START_MS;
                     placeFood(); upd(); draw();
                 }
                 function placeFood() {
@@ -1781,8 +1793,9 @@
                     snake.unshift(h);
                     if (h.x === food.x && h.y === food.y) {
                         score++; eaten++;
-                        if (eaten % 4 === 0 && speed > 70) {
-                            speed -= 6; clearInterval(iv); iv = setInterval(step, speed);
+                        if (eaten % RAMP_EVERY === 0 && speed > MIN_MS) {
+                            speed -= RAMP_MS;
+                            clearInterval(iv); iv = setInterval(step, speed);
                         }
                         placeFood(); upd();
                     } else snake.pop();
@@ -1814,7 +1827,11 @@
                 }
                 function input(d) {
                     if (dead) { reset(); return; }
-                    if (d.x === -dir.x && d.y === -dir.y) return;
+                    /* Compare against the PENDING direction (ndir), not the
+                       applied one — prevents double-tap reversals that used
+                       to kill the snake instantly. */
+                    if (d.x === -ndir.x && d.y === -ndir.y) return;
+                    if (d.x === ndir.x && d.y === ndir.y) return;
                     ndir = d;
                     if (!started) { started = true; iv = setInterval(step, speed); }
                 }
@@ -1835,22 +1852,26 @@
                 }, { passive: true });
                 cv.c.addEventListener('pointerdown', function() { if (dead) reset(); });
 
+                /* On-screen D-pad — explicit grid positions so the cross
+                   layout is always:  . ▲ .  /  ◀ ▼ ▶  */
                 var dp = document.createElement('div');
                 dp.className = 'dp';
-                function dpBtn(label, x, y, lbl) {
+                function dpBtn(label, x, y, lbl, row, col) {
                     var b = document.createElement('button');
                     b.textContent = label;
                     b.setAttribute('aria-label', lbl);
+                    b.style.gridRow = row;
+                    b.style.gridColumn = col;
                     b.addEventListener('pointerdown', function(e) {
                         e.preventDefault();
                         input({ x: x, y: y });
                     });
                     dp.appendChild(b);
                 }
-                dpBtn('▲', 0, -1, 'Snake up');
-                dpBtn('◀', -1, 0, 'Snake left');
-                dpBtn('▼', 0, 1, 'Snake down');
-                dpBtn('▶', 1, 0, 'Snake right');
+                dpBtn('▲', 0, -1, 'Snake up',    1, 2);
+                dpBtn('◀', -1, 0, 'Snake left',  2, 1);
+                dpBtn('▼', 0, 1, 'Snake down',   2, 2);
+                dpBtn('▶', 1, 0, 'Snake right',  2, 3);
                 root.appendChild(dp);
 
                 document.addEventListener('keydown', onKey);
@@ -2164,7 +2185,15 @@
         registerGame('flappy', {
             name: 'Flappy', icon: '🐦', hsKey: 'chat-arc-hs-flappy',
             init: function(root) {
-                var W = 300, H = 420, GAP = 112, PW = 48, SP = 175, BX = 70, BR = 10;
+                /* TUNING — all values are per 1/60s physics tick.
+                   Frame-rate independent: same speed on every device. */
+                var GRAV     = 0.36;   // downward pull per tick
+                var JUMP     = -6.7;   // flap impulse
+                var PIPE_SPD = 1.8;    // pipe scroll speed
+                var GAP      = 118;    // gap between pipes (px)
+                var SPACING  = 190;    // px between pipes
+
+                var W = 300, H = 420, PW = 48, BX = 70, BR = 10;
                 var cv = makeCanvas(root, W, H), ctx = cv.ctx;
                 var bar = gameBar(root);
                 var msg = gameMsg(root);
@@ -2185,22 +2214,23 @@
                     submitScore('flappy', score);
                     upd(); draw();
                 }
-                function step() {
-                    bird.vy += 0.42; bird.y += bird.vy;
+                /* Physics: one fixed 1/60s tick (called by the loop) */
+                function physics() {
+                    if (dead) return;
+                    bird.vy += GRAV;
+                    bird.y  += bird.vy;
                     if (bird.y < BR) { bird.y = BR; bird.vy = 0; }
-                    if (!pipes.length || pipes[pipes.length-1].x < W - SP)
+                    if (!pipes.length || pipes[pipes.length-1].x < W - SPACING)
                         pipes.push({ x: W + 8, gy: 60 + Math.random()*(H - GAP - 150), passed: false });
                     for (var i = pipes.length - 1; i >= 0; i--) {
                         var p = pipes[i];
-                        p.x -= 2.1;
+                        p.x -= PIPE_SPD;
                         if (!p.passed && p.x + PW < BX - BR) { p.passed = true; score++; upd(); }
                         if (p.x + PW < -8) pipes.splice(i, 1);
                         if (BX + BR > p.x && BX - BR < p.x + PW &&
                             (bird.y - BR < p.gy || bird.y + BR > p.gy + GAP)) { die(); return; }
                     }
-                    if (bird.y + BR >= H - 26) { bird.y = H - 26 - BR; die(); return; }
-                    draw();
-                    raf = requestAnimationFrame(step);
+                    if (bird.y + BR >= H - 26) { bird.y = H - 26 - BR; die(); }
                 }
                 function draw() {
                     ctx.fillStyle = '#0d0d0d'; ctx.fillRect(0, 0, W, H);
@@ -2242,10 +2272,11 @@
                         ctx.fillText('Tap or Space to retry', W/2, H/2 + 26);
                     }
                 }
+                var loop = fixedLoop(physics, draw, function() { return !dead; });
                 function flap() {
                     if (dead) { reset(); return; }
-                    if (!started) { started = true; raf = requestAnimationFrame(step); }
-                    bird.vy = -7.2;
+                    if (!started) { started = true; loop.start(); }
+                    bird.vy = JUMP;
                 }
                 function onKey(e) {
                     if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); flap(); }
@@ -2254,7 +2285,7 @@
                 document.addEventListener('keydown', onKey);
                 reset();
                 return function() {
-                    cancelAnimationFrame(raf);
+                    loop.stop();
                     document.removeEventListener('keydown', onKey);
                 };
             }
@@ -2264,6 +2295,9 @@
         registerGame('breakout', {
             name: 'Breakout', icon: '🧱', hsKey: 'chat-arc-hs-breakout',
             init: function(root) {
+                /* TUNING — per 1/60s physics tick, frame-rate independent */
+                var BALL_SPD = 3.0;    // base launch speed
+
                 var W = 300, H = 360, COLS = 8, ROWS = 5, BR = 4.5;
                 var PW_ = 54, PH = 9, PY = H - 26;
                 var TOP = 40, BH = 14, GAP = 5, MX = 8;
@@ -2273,7 +2307,7 @@
                 var msg = gameMsg(root);
                 msg.textContent = 'Drag to move · tap to launch';
                 var accent = cssVar('--accent');
-                var paddle, ball, bricks, score, lives, level, over, stuck, raf = 0;
+                var paddle, ball, bricks, score, lives, level, over, stuck;
                 var hs = parseInt(localStorage.getItem(this.hsKey), 10) || 0;
                 var keys = {};
 
@@ -2291,22 +2325,24 @@
                     ball = { x: W/2, y: PY - BR - 2, vx: 0, vy: 0 };
                 }
                 function newGame() {
-                    cancelAnimationFrame(raf);
+                    loop.stop();
                     score = 0; lives = 3; level = 1; over = false;
                     paddle = { x: W/2 - PW_/2 };
                     buildBricks(); resetBall(); upd();
                     msg.textContent = 'Drag to move · tap to launch';
-                    raf = requestAnimationFrame(step);
+                    loop.start();
                 }
                 function serve() {
                     if (over) { newGame(); return; }
                     if (!stuck) return;
                     stuck = false;
-                    var sp = 3 + level * 0.25;
+                    var sp = BALL_SPD + level * 0.25;
                     ball.vx = (Math.random()*2 - 1) * 1.6;
                     ball.vy = -sp;
                 }
-                function step() {
+                /* Physics: one fixed 1/60s tick */
+                function physics() {
+                    if (over) return;
                     if (keys.ArrowLeft) paddle.x -= 6.5;
                     if (keys.ArrowRight) paddle.x += 6.5;
                     paddle.x = Math.max(4, Math.min(W - PW_ - 4, paddle.x));
@@ -2314,52 +2350,49 @@
                     if (stuck) {
                         ball.x = paddle.x + PW_/2;
                         ball.y = PY - BR - 2;
-                    } else {
-                        ball.x += ball.vx; ball.y += ball.vy;
-                        if (ball.x < BR) { ball.x = BR; ball.vx = Math.abs(ball.vx); }
-                        if (ball.x > W - BR) { ball.x = W - BR; ball.vx = -Math.abs(ball.vx); }
-                        if (ball.y < BR) { ball.y = BR; ball.vy = Math.abs(ball.vy); }
-                        if (ball.vy > 0 && ball.y + BR >= PY && ball.y + BR <= PY + PH + 6 &&
-                            ball.x > paddle.x - BR && ball.x < paddle.x + PW_ + BR) {
-                            var rel = (ball.x - (paddle.x + PW_/2)) / (PW_/2);
-                            var sp = Math.min(7, Math.hypot(ball.vx, ball.vy) * 1.02);
-                            var ang = rel * 1.05;
-                            ball.vx = Math.sin(ang) * sp;
-                            ball.vy = -Math.abs(Math.cos(ang) * sp);
-                            ball.y = PY - BR;
-                        }
-                        if (ball.y > H + BR*2) {
-                            lives--; upd();
-                            if (lives <= 0) {
-                                over = true;
-                                if (score > hs) { hs = score; localStorage.setItem(GAMES.breakout.hsKey, hs); }
-                                submitScore('breakout', score);
-                                upd();
-                            } else resetBall();
-                        }
-                        if (!over && !stuck) {
-                            for (var i = 0; i < bricks.length; i++) {
-                                var b = bricks[i];
-                                if (!b.alive) continue;
-                                if (ball.x > b.x - BR && ball.x < b.x + BW + BR &&
-                                    ball.y > b.y - BR && ball.y < b.y + BH + BR) {
-                                    b.alive = false; score += 10; upd();
-                                    var ox = Math.min(ball.x - (b.x - BR), (b.x + BW + BR) - ball.x);
-                                    var oy = Math.min(ball.y - (b.y - BR), (b.y + BH + BR) - ball.y);
-                                    if (ox < oy) ball.vx *= -1; else ball.vy *= -1;
-                                    break;
-                                }
-                            }
-                            var any = false;
-                            for (var j = 0; j < bricks.length; j++) if (bricks[j].alive) { any = true; break; }
-                            if (!any) {
-                                level++; buildBricks(); resetBall(); upd();
-                                msg.textContent = 'Level ' + level + ' — ball is faster now!';
-                            }
+                        return;
+                    }
+                    ball.x += ball.vx; ball.y += ball.vy;
+                    if (ball.x < BR) { ball.x = BR; ball.vx = Math.abs(ball.vx); }
+                    if (ball.x > W - BR) { ball.x = W - BR; ball.vx = -Math.abs(ball.vx); }
+                    if (ball.y < BR) { ball.y = BR; ball.vy = Math.abs(ball.vy); }
+                    if (ball.vy > 0 && ball.y + BR >= PY - 2 && ball.y - BR <= PY + PH + 8 &&
+                        ball.x > paddle.x - BR && ball.x < paddle.x + PW_ + BR) {
+                        var rel = (ball.x - (paddle.x + PW_/2)) / (PW_/2);
+                        var sp = Math.min(7, Math.hypot(ball.vx, ball.vy) * 1.02);
+                        var ang = rel * 1.05;
+                        ball.vx = Math.sin(ang) * sp;
+                        ball.vy = -Math.abs(Math.cos(ang) * sp);
+                        ball.y = PY - BR;
+                    }
+                    if (ball.y > H + BR*2) {
+                        lives--; upd();
+                        if (lives <= 0) {
+                            over = true;
+                            if (score > hs) { hs = score; localStorage.setItem(GAMES.breakout.hsKey, hs); }
+                            submitScore('breakout', score);
+                            upd();
+                        } else resetBall();
+                        return;
+                    }
+                    for (var i = 0; i < bricks.length; i++) {
+                        var b = bricks[i];
+                        if (!b.alive) continue;
+                        if (ball.x > b.x - BR && ball.x < b.x + BW + BR &&
+                            ball.y > b.y - BR && ball.y < b.y + BH + BR) {
+                            b.alive = false; score += 10; upd();
+                            var ox = Math.min(ball.x - (b.x - BR), (b.x + BW + BR) - ball.x);
+                            var oy = Math.min(ball.y - (b.y - BR), (b.y + BH + BR) - ball.y);
+                            if (ox < oy) ball.vx *= -1; else ball.vy *= -1;
+                            break;
                         }
                     }
-                    draw();
-                    if (!over) raf = requestAnimationFrame(step);
+                    var any = false;
+                    for (var j = 0; j < bricks.length; j++) if (bricks[j].alive) { any = true; break; }
+                    if (!any) {
+                        level++; buildBricks(); resetBall(); upd();
+                        msg.textContent = 'Level ' + level + ' — ball is faster now!';
+                    }
                 }
                 function draw() {
                     ctx.fillStyle = '#0d0d0d'; ctx.fillRect(0, 0, W, H);
@@ -2390,6 +2423,7 @@
                         ctx.fillText('Tap to play again', W/2, H/2 + 26);
                     }
                 }
+                var loop = fixedLoop(physics, draw, function() { return !over; });
                 function onKey(e) {
                     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                         keys[e.key] = true; e.preventDefault();
@@ -2414,7 +2448,7 @@
                 document.addEventListener('keyup', onKeyUp);
                 newGame();
                 return function() {
-                    cancelAnimationFrame(raf);
+                    loop.stop();
                     document.removeEventListener('keydown', onKey);
                     document.removeEventListener('keyup', onKeyUp);
                 };
@@ -2423,7 +2457,6 @@
 
         /* =============================================
            Mini-games modal framework
-           (views: name → list → game / leaderboard)
            ============================================= */
         var activeCleanup = null, curGame = null, gView = 'list';
 
