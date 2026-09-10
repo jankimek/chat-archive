@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat Archive</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Lora:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;700&family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&family=Lora:wght@400;500;700&family=Merriweather:wght@400;700&family=Nunito:wght@400;700&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Firebase (global leaderboard). Safe to keep even if unconfigured. -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -31,6 +31,11 @@
         :root[data-accent="azure"]{--accent:#4db8ff;--accent-h:#2f97dd;--accent-glow:rgba(77,184,255,.09)}
         :root[data-accent="rose"]{--accent:#ef6f8f;--accent-h:#cc4d75;--accent-glow:rgba(239,111,143,.09)}
         :root[data-accent="violet"]{--accent:#a98bff;--accent-h:#8a63e8;--accent-glow:rgba(169,139,255,.09)}
+        :root[data-accent="coral"]{--accent:#ff7a59;--accent-h:#e05f3d;--accent-glow:rgba(255,122,89,.09)}
+        :root[data-accent="cyan"]{--accent:#22d3ee;--accent-h:#0eb1cc;--accent-glow:rgba(34,211,238,.09)}
+        :root[data-accent="lime"]{--accent:#a3e635;--accent-h:#82c11c;--accent-glow:rgba(163,230,53,.09)}
+        :root[data-accent="magenta"]{--accent:#e850a8;--accent-h:#c33587;--accent-glow:rgba(232,80,168,.09)}
+        :root[data-accent="slate"]{--accent:#9aa4b2;--accent-h:#7c8694;--accent-glow:rgba(154,164,178,.09)}
 
         body{
             font-family:var(--font);
@@ -68,7 +73,7 @@
         .pw-card .sub{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px}
         .inp-wrap{position:relative;margin-bottom:8px}
         .inp-wrap input{
-            width:100%;padding:14px 48px 14px 16px;background:var(--bg);
+            width:100%;padding:14px 16px;background:var(--bg);
             border:1.5px solid var(--border);border-radius:var(--rad);color:var(--fg);
             font-size:15px;font-family:inherit;outline:none;
             transition:border-color .2s,background .3s,color .3s
@@ -110,6 +115,28 @@
             color:var(--accent);background:var(--accent-glow)
         }
 
+        /* === BOOKMARK EDIT MODAL === */
+        #bm-modal{
+            position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+            background:rgba(0,0,0,.6);z-index:96;padding:20px;backdrop-filter:blur(4px)
+        }
+        #bm-modal .pw-card{max-width:360px;padding:30px 24px 26px;text-align:left}
+        #bm-modal h1{font-size:19px;text-align:center;margin-bottom:4px}
+        #bm-modal .inp-wrap{margin-top:18px}
+        .bm-color-lbl{
+            font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;
+            margin:18px 2px 10px;font-weight:700
+        }
+        .bm-color-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+        .bm-sw{
+            width:28px;height:28px;border-radius:50%;border:none;cursor:pointer;padding:0;
+            flex-shrink:0;transition:transform .12s,box-shadow .12s
+        }
+        .bm-sw:active{transform:scale(.88)}
+        .bm-sw.sel{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--fg)}
+        .bm-sw-custom{position:relative;background:conic-gradient(from 0deg,#ff5757,#ffb84d,#3ecf8e,#4db8ff,#a98bff,#ff5757)}
+        .bm-sw-custom input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+
         /* === LOADING SCREEN === */
         #ld-screen{
             position:fixed;inset:0;display:none;flex-direction:column;
@@ -147,10 +174,10 @@
         #hdr-meta:focus {border-color:var(--accent);color:var(--fg)}
 
         .pg-jump{display:flex;align-items:center;gap:5px}
-.pg-jump svg{color:var(--muted);flex-shrink:0;transition:color .2s;cursor:pointer;animation:tapHint 5s ease-in-out infinite}
-.pg-jump:hover svg,.pg-jump:active svg{color:var(--accent)}
-@keyframes tapHint{0%,90%,100%{transform:translateY(0)}94%{transform:translateY(-2.5px)}97%{transform:translateY(0)}}
-        
+        .pg-jump svg{color:var(--muted);flex-shrink:0;transition:color .2s;cursor:pointer;animation:tapHint 5s ease-in-out infinite}
+        .pg-jump:hover svg,.pg-jump:active svg{color:var(--accent)}
+        @keyframes tapHint{0%,90%,100%{transform:translateY(0)}94%{transform:translateY(-2.5px)}97%{transform:translateY(0)}}
+
         .progress{position:absolute;left:0;right:0;bottom:-1px;height:2px;pointer-events:none}
         #prog-fill{height:100%;width:0;background:var(--accent);transition:width .2s;opacity:.85}
 
@@ -167,6 +194,7 @@
             background-image:radial-gradient(circle,rgba(255,255,255,var(--dot-opacity)) 1px,transparent 1px);
             background-size:20px 20px;overscroll-behavior:contain
         }
+        body.no-dots .ch-scroll{background-image:none}
         .ch-scroll::-webkit-scrollbar{width:3px}
         .ch-scroll::-webkit-scrollbar-track{background:transparent}
         .ch-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -203,7 +231,7 @@
         .pg-tag{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
         .pg-head-r{display:flex;align-items:center;gap:8px}
         .pg-num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-        .pg-bm{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;display:flex;align-items:center;border-radius:4px}
+        .pg-bm{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;display:flex;align-items:center;border-radius:4px;transition:color .15s}
         .pg-bm:active{color:var(--fg)}
         .pg-bm.on{color:var(--accent)}
         .pg-bm.on svg{fill:currentColor}
@@ -211,7 +239,7 @@
         .pg-text {
             padding: 12px;
             font-size: var(--pg-fs, 14px);
-            line-height: 1.55;
+            line-height: var(--pg-lh, 1.55);
             white-space: pre-wrap;
             word-break: break-word;
             color: var(--fg);
@@ -265,19 +293,21 @@
         .bm-list::-webkit-scrollbar { width: 4px; }
         .bm-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         .bm-item {
-            padding: 8px 16px; font-size: 13px; color: var(--fg2); cursor: pointer;
+            padding: 8px 12px 8px 16px; font-size: 13px; color: var(--fg2); cursor: pointer;
             transition: background .15s, color .15s; white-space: nowrap;
             overflow: hidden; text-overflow: ellipsis;
-            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            display: flex; align-items: center; gap: 9px;
         }
         .bm-item:hover { background: var(--bg2); color: var(--fg); }
-        .bm-item .bm-label { overflow: hidden; text-overflow: ellipsis; flex: 1 }
+        .bm-item .bm-label { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0 }
+        .bm-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+        .bm-pgn{color:var(--muted);font-size:11px;flex-shrink:0;font-variant-numeric:tabular-nums}
         .bm-empty { padding: 14px 16px; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.6 }
-        .bm-del {
-            background: none; border: none; color: var(--muted); font-size: 18px;
-            cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0
+        .bm-del,.bm-edit {
+            background: none; border: none; color: var(--muted); font-size: 17px;
+            cursor: pointer; padding: 0 5px; line-height: 1; flex-shrink: 0
         }
-        .bm-del:hover { color: var(--err) }
+        .bm-del:hover,.bm-edit:hover { color: var(--err) }
         .dd-action {
             margin: 4px 12px 8px; padding: 8px 10px; background: var(--bg);
             border: 1px dashed var(--border); border-radius: 8px; color: var(--fg2);
@@ -317,16 +347,18 @@
         .fs-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 13px; color: var(--fg2) }
         .fs-row .fs-lbl { flex: 1 }
         .fs-btn {
-            width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+            min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--border);
             background: var(--bg); color: var(--fg); cursor: pointer; font-weight: 700;
             font-family: inherit; font-size: 14px; transition: border-color .2s
         }
         .fs-btn:active { border-color: var(--accent) }
-        #fs-val { font-variant-numeric: tabular-nums; color: var(--fg); min-width: 34px; text-align: center; font-size: 12px }
+        #fs-val,#lh-val { font-variant-numeric: tabular-nums; color: var(--fg); min-width: 34px; text-align: center; font-size: 12px }
         .font-pill{padding:4px 9px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--fg2);font-size:12px;cursor:pointer;transition:border-color .15s;font-family:inherit}
         .font-pill.sel{border-color:var(--accent);color:var(--fg)}
         .swatch{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;flex-shrink:0;padding:0;transition:box-shadow .15s}
         .swatch.sel{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--fg2)}
+        .sw-custom{position:relative;background:conic-gradient(from 0deg,#ff5757,#ffb84d,#3ecf8e,#4db8ff,#a98bff,#ff5757)}
+        .sw-custom input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
 
         /* === MINI GAMES === */
         #game-modal{
@@ -474,6 +506,21 @@
         </div>
     </div>
 
+    <!-- ========== BOOKMARK EDIT MODAL ========== -->
+    <div id="bm-modal">
+        <div class="pw-card">
+            <h1 id="bm-m-title">Bookmark page</h1>
+            <div class="inp-wrap">
+                <input type="text" id="bm-name" placeholder="Bookmark name" maxlength="48" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+            <div class="bm-color-lbl">Color</div>
+            <div class="bm-color-row" id="bm-color-row"></div>
+            <div class="fld-err" id="bm-m-err"></div>
+            <button class="go-btn" id="bm-save">Save bookmark</button>
+            <button class="go-btn ghost" id="bm-cancel">Cancel</button>
+        </div>
+    </div>
+
     <!-- ========== CHAT VIEW ========== -->
     <div id="chat-view">
         <header class="ch-hdr">
@@ -484,21 +531,21 @@
                 </svg>
             </div>
             <div class="hdr-info">
-    <h2>Chat Archive</h2>
-    <div class="pg-jump" id="pg-jump">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2.5 4.2 4.9 5.6"/>
-            <path d="M8.2 1.2v2.4"/>
-            <path d="M14 4.2 11.6 5.6"/>
-            <path d="M6.5 15V8.5a1.75 1.75 0 0 1 3.5 0V15"/>
-            <path d="M10 12.5v-1.2a1.7 1.7 0 0 1 3.4 0V15"/>
-            <path d="M13.4 13.6v-.8a1.65 1.65 0 0 1 3.3 0V15"/>
-            <path d="M16.7 14.4v-.4a1.55 1.55 0 0 1 3.1 0V15"/>
-            <path d="M6.5 15v2.4a3 3 0 0 0 3 3h7.3a3 3 0 0 0 3-3V15"/>
-        </svg>
-        <input type="number" id="hdr-meta" value="0" min="1" aria-label="Jump to page">
-    </div>
-</div>
+                <h2>Chat Archive</h2>
+                <div class="pg-jump" id="pg-jump">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2.5 4.2 4.9 5.6"/>
+                        <path d="M8.2 1.2v2.4"/>
+                        <path d="M14 4.2 11.6 5.6"/>
+                        <path d="M6.5 15V8.5a1.75 1.75 0 0 1 3.5 0V15"/>
+                        <path d="M10 12.5v-1.2a1.7 1.7 0 0 1 3.4 0V15"/>
+                        <path d="M13.4 13.6v-.8a1.65 1.65 0 0 1 3.3 0V15"/>
+                        <path d="M16.7 14.4v-.4a1.55 1.55 0 0 1 3.1 0V15"/>
+                        <path d="M6.5 15v2.4a3 3 0 0 0 3 3h7.3a3 3 0 0 0 3-3V15"/>
+                    </svg>
+                    <input type="number" id="hdr-meta" value="0" min="1" aria-label="Jump to page">
+                </div>
+            </div>
             <button class="theme-btn" id="game-b" aria-label="Mini games">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="7" width="20" height="10" rx="5"/>
@@ -542,12 +589,10 @@
                 </div>
                 <div class="dd-sec">
                     <div class="dd-hd">Your bookmarks <span id="ubm-count"></span></div>
-                    <button class="dd-action" id="bm-add">＋ Bookmark page <b id="bm-add-pg">—</b></button>
+                    <button class="dd-action" id="bm-add">
+                        <span id="bm-add-label">＋ Bookmark page</span> <b id="bm-add-pg">—</b>
+                    </button>
                     <div id="ubm-list" class="bm-list"></div>
-                </div>
-                <div class="dd-sec">
-                    <div class="dd-hd">Document outline</div>
-                    <div id="bm-list" class="bm-list"></div>
                 </div>
                 <div class="dd-sec">
                     <div class="dd-hd">Appearance</div>
@@ -557,13 +602,23 @@
                         <span id="fs-val">14px</span>
                         <button class="fs-btn" id="fs-plus" aria-label="Increase text size">A+</button>
                     </div>
+                    <div class="fs-row">
+                        <span class="fs-lbl">Line spacing</span>
+                        <button class="fs-btn" id="lh-minus" aria-label="Decrease line spacing">−</button>
+                        <span id="lh-val">1.6</span>
+                        <button class="fs-btn" id="lh-plus" aria-label="Increase line spacing">+</button>
+                    </div>
                     <div class="fs-row" style="flex-wrap:wrap">
                         <span class="fs-lbl">Font</span>
                         <span id="font-row" style="display:flex;gap:6px;flex-wrap:wrap"></span>
                     </div>
-                    <div class="fs-row">
+                    <div class="fs-row" style="flex-wrap:wrap">
                         <span class="fs-lbl">Accent</span>
-                        <span id="accent-row" style="display:flex;gap:9px;align-items:center"></span>
+                        <span id="accent-row" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"></span>
+                    </div>
+                    <div class="fs-row">
+                        <span class="fs-lbl">Dot background</span>
+                        <button class="fs-btn" id="dot-btn">On</button>
                     </div>
                 </div>
             </div>
@@ -673,10 +728,10 @@
 
         var $menuB   = document.getElementById('menu-b');
         var $menuDd  = document.getElementById('menu-dd');
-        var $bmList  = document.getElementById('bm-list');
         var $ubmList = document.getElementById('ubm-list');
         var $ubmCount= document.getElementById('ubm-count');
         var $bmAdd   = document.getElementById('bm-add');
+        var $bmAddLabel = document.getElementById('bm-add-label');
         var $bmAddPg = document.getElementById('bm-add-pg');
         var $searchIn= document.getElementById('search-in');
         var $searchGo= document.getElementById('search-go');
@@ -685,6 +740,10 @@
         var $fsMinus = document.getElementById('fs-minus');
         var $fsPlus  = document.getElementById('fs-plus');
         var $fsVal   = document.getElementById('fs-val');
+        var $lhMinus = document.getElementById('lh-minus');
+        var $lhPlus  = document.getElementById('lh-plus');
+        var $lhVal   = document.getElementById('lh-val');
+        var $dotBtn  = document.getElementById('dot-btn');
         var $prog    = document.getElementById('prog-fill');
         var $rModal  = document.getElementById('resume-modal');
         var $rPg     = document.getElementById('r-pg');
@@ -733,7 +792,8 @@
         });
 
         /* =============================================
-           Appearance: text size, font, accent color
+           Appearance: text size, line spacing, fonts,
+           accent colors (presets + custom picker)
            ============================================= */
         function setFs(v) {
             v = Math.max(11, Math.min(24, v));
@@ -745,18 +805,51 @@
         $fsMinus.addEventListener('click', function() { setFs((parseInt(localStorage.getItem('chat-arc-fs'), 10) || 14) - 1); });
         $fsPlus .addEventListener('click', function() { setFs((parseInt(localStorage.getItem('chat-arc-fs'), 10) || 14) + 1); });
 
+        function setLh(v) {
+            v = Math.round(Math.max(1.2, Math.min(2.4, v)) * 10) / 10;
+            document.documentElement.style.setProperty('--pg-lh', v);
+            localStorage.setItem('chat-arc-lh', v);
+            $lhVal.textContent = v.toFixed(1);
+        }
+        setLh(parseFloat(localStorage.getItem('chat-arc-lh')) || 1.6);
+        $lhMinus.addEventListener('click', function() { setLh((parseFloat(localStorage.getItem('chat-arc-lh')) || 1.6) - 0.1); });
+        $lhPlus .addEventListener('click', function() { setLh((parseFloat(localStorage.getItem('chat-arc-lh')) || 1.6) + 0.1); });
+
+        /* --- Dot background toggle --- */
+        function applyDots(on) {
+            document.body.classList.toggle('no-dots', !on);
+            $dotBtn.textContent = on ? 'On' : 'Off';
+            localStorage.setItem('chat-arc-dots', on ? '1' : '0');
+        }
+        applyDots(localStorage.getItem('chat-arc-dots') !== '0');
+        $dotBtn.addEventListener('click', function() {
+            applyDots(localStorage.getItem('chat-arc-dots') !== '0' ? false : true);
+        });
+
+        /* --- Fonts --- */
         var FONTS = [
-            { id:'dm',    label:'DM Sans', stack:"'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif" },
-            { id:'inter', label:'Inter',   stack:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif" },
-            { id:'lora',  label:'Lora',    stack:"'Lora',Georgia,'Times New Roman',serif" },
-            { id:'mono',  label:'JetBrains', stack:"'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace" }
+            { id:'dm',       label:'DM Sans',   stack:"'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif" },
+            { id:'inter',    label:'Inter',     stack:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif" },
+            { id:'nunito',   label:'Nunito',    stack:"'Nunito',-apple-system,BlinkMacSystemFont,sans-serif" },
+            { id:'poppins',  label:'Poppins',   stack:"'Poppins',-apple-system,BlinkMacSystemFont,sans-serif" },
+            { id:'atkinson', label:'Atkinson',  stack:"'Atkinson Hyperlegible',-apple-system,sans-serif" },
+            { id:'lora',     label:'Lora',      stack:"'Lora',Georgia,'Times New Roman',serif" },
+            { id:'merri',    label:'Merriweather', stack:"'Merriweather',Georgia,serif" },
+            { id:'playfair', label:'Playfair',  stack:"'Playfair Display',Georgia,serif" },
+            { id:'crimson',  label:'Crimson',   stack:"'Crimson Pro',Georgia,serif" },
+            { id:'mono',     label:'JetBrains', stack:"'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace" }
         ];
         var ACCENTS = [
             { id:'gold',    c:'#d4a03c' },
             { id:'emerald', c:'#3ecf8e' },
             { id:'azure',   c:'#4db8ff' },
+            { id:'cyan',    c:'#22d3ee' },
+            { id:'violet',  c:'#a98bff' },
             { id:'rose',    c:'#ef6f8f' },
-            { id:'violet',  c:'#a98bff' }
+            { id:'coral',   c:'#ff7a59' },
+            { id:'lime',    c:'#a3e635' },
+            { id:'magenta', c:'#e850a8' },
+            { id:'slate',   c:'#9aa4b2' }
         ];
         var $fontRow   = document.getElementById('font-row');
         var $accentRow = document.getElementById('accent-row');
@@ -770,6 +863,44 @@
             b.addEventListener('click', function() { applyFont(f.id); });
             $fontRow.appendChild(b);
         });
+
+        /* --- Custom accent color helpers --- */
+        var CUSTOM_ACCENT_DEFAULT = '#7dd3fc';
+        function shadeHex(hex, f) {
+            var n = hex.replace('#','');
+            if (n.length === 3) n = n[0]+n[0]+n[1]+n[1]+n[2]+n[2];
+            var r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+            r = Math.round(Math.min(255, Math.max(0, r*f)));
+            g = Math.round(Math.min(255, Math.max(0, g*f)));
+            b = Math.round(Math.min(255, Math.max(0, b*f)));
+            return 'rgb(' + r + ',' + g + ',' + b + ')';
+        }
+        function hexToRgba(hex, a) {
+            var n = hex.replace('#','');
+            if (n.length === 3) n = n[0]+n[0]+n[1]+n[1]+n[2]+n[2];
+            var r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+        }
+        function setCustomAccent(hex) {
+            var st = document.documentElement.style;
+            document.documentElement.setAttribute('data-accent', 'custom');
+            st.setProperty('--accent', hex);
+            st.setProperty('--accent-h', shadeHex(hex, 0.78));
+            st.setProperty('--accent-glow', hexToRgba(hex, 0.09));
+            try { localStorage.setItem('chat-arc-accent-custom', hex); } catch (e) {}
+        }
+        function clearCustomAccent() {
+            var st = document.documentElement.style;
+            st.removeProperty('--accent');
+            st.removeProperty('--accent-h');
+            st.removeProperty('--accent-glow');
+        }
+        function selectAccentUI(id) {
+            var ss = $accentRow.children;
+            for (var i = 0; i < ss.length; i++)
+                ss[i].classList.toggle('sel', ss[i].getAttribute('data-a') === id);
+        }
+
         ACCENTS.forEach(function(a) {
             var b = document.createElement('button');
             b.className = 'swatch';
@@ -781,6 +912,23 @@
             $accentRow.appendChild(b);
         });
 
+        /* Custom color wheel swatch */
+        var customLab = document.createElement('label');
+        customLab.className = 'swatch sw-custom';
+        customLab.setAttribute('data-a', 'custom');
+        customLab.title = 'Custom color';
+        var customInp = document.createElement('input');
+        customInp.type = 'color';
+        try { customInp.value = localStorage.getItem('chat-arc-accent-custom') || CUSTOM_ACCENT_DEFAULT; }
+        catch (e) { customInp.value = CUSTOM_ACCENT_DEFAULT; }
+        customInp.addEventListener('input', function() {
+            setCustomAccent(customInp.value);
+            try { localStorage.setItem('chat-arc-accent', 'custom'); } catch (e) {}
+            selectAccentUI('custom');
+        });
+        customLab.appendChild(customInp);
+        $accentRow.appendChild(customLab);
+
         function applyFont(id) {
             var f = FONTS[0];
             for (var i = 0; i < FONTS.length; i++) if (FONTS[i].id === id) f = FONTS[i];
@@ -790,11 +938,17 @@
             for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('sel', ps[i].getAttribute('data-f') === f.id);
         }
         function applyAccent(id) {
-            if (id === 'gold') document.documentElement.removeAttribute('data-accent');
-            else document.documentElement.setAttribute('data-accent', id);
+            if (id === 'custom') {
+                var hex = null;
+                try { hex = localStorage.getItem('chat-arc-accent-custom'); } catch (e) {}
+                setCustomAccent(hex || CUSTOM_ACCENT_DEFAULT);
+            } else {
+                clearCustomAccent();
+                if (id === 'gold') document.documentElement.removeAttribute('data-accent');
+                else document.documentElement.setAttribute('data-accent', id);
+            }
             try { localStorage.setItem('chat-arc-accent', id); } catch (e) {}
-            var ss = $accentRow.children;
-            for (var i = 0; i < ss.length; i++) ss[i].classList.toggle('sel', ss[i].getAttribute('data-a') === id);
+            selectAccentUI(id);
         }
         applyFont(localStorage.getItem('chat-arc-font') || 'dm');
         applyAccent(localStorage.getItem('chat-arc-accent') || 'gold');
@@ -869,8 +1023,11 @@
         }
 
         /* =============================================
-           User bookmarks
+           User bookmarks — named & colored
            ============================================= */
+        var BM_PALETTE = ['#d4a03c','#3ecf8e','#4db8ff','#a98bff','#ef6f8f','#ff7a59','#22d3ee','#a3e635','#e850a8','#9aa4b2'];
+        var BM_DEFAULT = BM_PALETTE[0];
+
         function getBms() {
             try { return JSON.parse(localStorage.getItem('chat-arc-bms') || '[]'); }
             catch (e) { return []; }
@@ -878,27 +1035,107 @@
         function setBms(a) {
             try { localStorage.setItem('chat-arc-bms', JSON.stringify(a)); } catch (e) {}
         }
-        function toggleBm(pg) {
-            var a = getBms();
-            var i = a.findIndex(function(b) { return b.pg === pg; });
-            if (i >= 0) {
-                a.splice(i, 1);
-                toast('Bookmark removed — page ' + pg);
-            } else {
-                a.push({ pg: pg, t: Date.now() });
-                a.sort(function(x, y) { return x.pg - y.pg; });
-                toast('Bookmarked page ' + pg);
+
+        /* --- Bookmark edit modal --- */
+        var $bmModal  = document.getElementById('bm-modal');
+        var $bmMTitle = document.getElementById('bm-m-title');
+        var $bmName   = document.getElementById('bm-name');
+        var $bmColors = document.getElementById('bm-color-row');
+        var $bmMErr   = document.getElementById('bm-m-err');
+        var $bmSave   = document.getElementById('bm-save');
+        var $bmCancel = document.getElementById('bm-cancel');
+
+        var bmPg = 1, bmPick = BM_DEFAULT, bmSwatches = [], bmCustomLab = null, bmCustomInp = null;
+
+        (function buildBmSwatches() {
+            BM_PALETTE.forEach(function(c) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'bm-sw';
+                b.style.background = c;
+                b.setAttribute('aria-label', 'Color ' + c);
+                b.addEventListener('click', function() { pickBmColor(c); });
+                $bmColors.appendChild(b);
+                bmSwatches.push(b);
+            });
+            bmCustomLab = document.createElement('label');
+            bmCustomLab.className = 'bm-sw bm-sw-custom';
+            bmCustomLab.title = 'Custom color';
+            bmCustomInp = document.createElement('input');
+            bmCustomInp.type = 'color';
+            bmCustomInp.value = CUSTOM_ACCENT_DEFAULT;
+            bmCustomInp.addEventListener('input', function() { pickBmColor(bmCustomInp.value); });
+            bmCustomLab.appendChild(bmCustomInp);
+            $bmColors.appendChild(bmCustomLab);
+        })();
+
+        function pickBmColor(c) {
+            bmPick = c;
+            var inPalette = false;
+            for (var i = 0; i < BM_PALETTE.length; i++) {
+                var match = BM_PALETTE[i].toLowerCase() === String(c).toLowerCase();
+                bmSwatches[i].classList.toggle('sel', match);
+                if (match) inPalette = true;
             }
-            setBms(a);
-            refreshBmUI();
+            bmCustomLab.classList.toggle('sel', !inPalette);
+            if (!inPalette) bmCustomInp.value = c;
         }
+
+        function openBmModal(pg, existing) {
+            bmPg = pg;
+            $bmMTitle.textContent = existing ? '✎ Edit bookmark — page ' + pg : '🔖 Bookmark page ' + pg;
+            $bmName.value = existing ? (existing.name || 'Page ' + pg) : ('Page ' + pg);
+            var def = (existing && existing.color) ? existing.color
+                    : (localStorage.getItem('chat-arc-bm-color') || BM_DEFAULT);
+            bmCustomInp.value = def;
+            pickBmColor(def);
+            $bmMErr.textContent = '';
+            $bmModal.style.display = 'flex';
+            setTimeout(function() { $bmName.focus(); $bmName.select(); }, 120);
+        }
+        function closeBmModal() { $bmModal.style.display = 'none'; }
+
+        function saveBm() {
+            var name = $bmName.value.replace(/\s+/g, ' ').trim() || ('Page ' + bmPg);
+            var a = getBms();
+            var i = a.findIndex(function(b) { return b.pg === bmPg; });
+            if (i >= 0) a[i] = { pg: bmPg, name: name, color: bmPick, t: a[i].t || Date.now() };
+            else { a.push({ pg: bmPg, name: name, color: bmPick, t: Date.now() }); a.sort(function(x, y) { return x.pg - y.pg; }); }
+            setBms(a);
+            try { localStorage.setItem('chat-arc-bm-color', bmPick); } catch (e) {}
+            closeBmModal();
+            refreshBmUI();
+            toast('🔖 ' + name);
+        }
+        $bmSave.addEventListener('click', saveBm);
+        $bmCancel.addEventListener('click', closeBmModal);
+        $bmModal.addEventListener('click', function(e) { if (e.target === $bmModal) closeBmModal(); });
+        $bmName.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') saveBm();
+            e.stopPropagation();
+        });
+        $bmName.addEventListener('input', function() { $bmMErr.textContent = ''; });
+
+        function removeBm(pg) {
+            setBms(getBms().filter(function(b) { return b.pg !== pg; }));
+            refreshBmUI();
+            toast('Bookmark removed — page ' + pg);
+        }
+        function toggleBm(pg) {
+            var b = getBms().find(function(x) { return x.pg === pg; });
+            if (b) removeBm(pg);
+            else openBmModal(pg, null);
+        }
+
         function refreshBmUI() {
-            var s = {};
-            getBms().forEach(function(b) { s[b.pg] = 1; });
+            var map = {};
+            getBms().forEach(function(b) { map[b.pg] = b; });
             var btns = document.querySelectorAll('.pg-bm');
             for (var i = 0; i < btns.length; i++) {
-                var on = !!s[parseInt(btns[i].getAttribute('data-pg'), 10)];
-                btns[i].classList.toggle('on', on);
+                var pg = parseInt(btns[i].getAttribute('data-pg'), 10);
+                var b = map[pg];
+                btns[i].classList.toggle('on', !!b);
+                btns[i].style.color = b ? (b.color || '') : '';
             }
             renderUserBms();
         }
@@ -909,7 +1146,7 @@
             if (!a.length) {
                 var empty = document.createElement('div');
                 empty.className = 'bm-empty';
-                empty.textContent = 'No bookmarks yet — tap the bookmark icon on any page.';
+                empty.textContent = 'No bookmarks yet — tap the bookmark icon on any page to name & color one.';
                 $ubmList.appendChild(empty);
                 return;
             }
@@ -917,10 +1154,30 @@
                 var item = document.createElement('div');
                 item.className = 'bm-item';
 
+                var dot = document.createElement('span');
+                dot.className = 'bm-dot';
+                dot.style.background = b.color || BM_DEFAULT;
+                item.appendChild(dot);
+
                 var label = document.createElement('span');
                 label.className = 'bm-label';
-                label.textContent = 'Page ' + b.pg;
+                label.textContent = b.name || ('Page ' + b.pg);
                 item.appendChild(label);
+
+                var pgn = document.createElement('span');
+                pgn.className = 'bm-pgn';
+                pgn.textContent = 'P' + b.pg;
+                item.appendChild(pgn);
+
+                var edit = document.createElement('button');
+                edit.className = 'bm-edit';
+                edit.setAttribute('aria-label', 'Edit bookmark for page ' + b.pg);
+                edit.textContent = '✎';
+                edit.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openBmModal(b.pg, b);
+                });
+                item.appendChild(edit);
 
                 var del = document.createElement('button');
                 del.className = 'bm-del';
@@ -928,7 +1185,7 @@
                 del.innerHTML = '&times;';
                 del.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    toggleBm(b.pg);
+                    removeBm(b.pg);
                 });
                 item.appendChild(del);
 
@@ -939,7 +1196,17 @@
                 $ubmList.appendChild(item);
             });
         }
-        $bmAdd.addEventListener('click', function() { toggleBm(curPage); });
+
+        function syncBmAddBtn() {
+            var b = getBms().find(function(x) { return x.pg === curPage; });
+            $bmAddLabel.textContent = b ? '✎ Edit bookmark' : '＋ Bookmark page';
+            $bmAddPg.textContent = curPage;
+        }
+
+        $bmAdd.addEventListener('click', function() {
+            var b = getBms().find(function(x) { return x.pg === curPage; });
+            openBmModal(curPage, b || null);
+        });
 
         $scroll.addEventListener('click', function(e) {
             var b = e.target.closest('.pg-bm');
@@ -954,7 +1221,7 @@
             if ($menuDd.classList.contains('on')) {
                 closeMenu();
             } else {
-                $bmAddPg.textContent = curPage;
+                syncBmAddBtn();
                 renderUserBms();
                 $menuDd.classList.add('on');
             }
@@ -970,61 +1237,6 @@
                 closeMenu();
             }
         });
-
-        /* =============================================
-           PDF outline (built-in bookmarks)
-           ============================================= */
-        function buildBookmarksMenu(outline, level) {
-            level = level || 0;
-            var frag = document.createDocumentFragment();
-
-            outline.forEach(function(item) {
-                var el = document.createElement('div');
-                el.className = 'bm-item';
-                el.style.paddingLeft = (16 + level * 12) + 'px';
-                var lbl = document.createElement('span');
-                lbl.className = 'bm-label';
-                lbl.textContent = item.title || 'Untitled';
-                el.appendChild(lbl);
-
-                el.addEventListener('click', function() {
-                    if (item.dest) {
-                        navigateToDest(item.dest);
-                    } else if (item.url) {
-                        window.open(item.url, '_blank');
-                    }
-                    closeMenu();
-                });
-
-                frag.appendChild(el);
-
-                if (item.items && item.items.length > 0) {
-                    frag.appendChild(buildBookmarksMenu(item.items, level + 1));
-                }
-            });
-
-            return frag;
-        }
-
-        function navigateToDest(dest) {
-            var promise;
-            if (typeof dest === 'string') {
-                promise = pdf.getDestination(dest);
-            } else {
-                promise = Promise.resolve(dest);
-            }
-
-            promise.then(function(explicitDest) {
-                if (!explicitDest || !explicitDest[0]) return;
-                pdf.getPageIndex(explicitDest[0]).then(function(pageIndex) {
-                    closeMenu();
-                    goToPage(pageIndex + 1);
-                });
-            }).catch(function(e) {
-                console.error("Failed to navigate to destination", e);
-                toast("Failed to jump to bookmark", true);
-            });
-        }
 
         /* =============================================
            Search across all pages
@@ -1112,6 +1324,11 @@
         document.addEventListener('keydown', function(e) {
             if ($gModal.style.display === 'flex') return;
 
+            if ($bmModal.style.display === 'flex') {
+                if (e.key === 'Escape') closeBmModal();
+                return;
+            }
+
             if ($rModal.style.display === 'flex') {
                 if (e.key === 'Escape') $rCont.click();
                 return;
@@ -1128,7 +1345,7 @@
             else if (e.key === 'b' || e.key === 'B') { e.preventDefault(); toggleBm(curPage); return; }
             else if (e.key === '/') {
                 e.preventDefault();
-                $bmAddPg.textContent = curPage; renderUserBms();
+                syncBmAddBtn(); renderUserBms();
                 $menuDd.classList.add('on');
                 $searchIn.focus();
                 return;
@@ -1153,11 +1370,11 @@
             }
         });
         /* Tap the hand icon to focus the page jump input */
-document.getElementById('pg-jump').addEventListener('click', function(e) {
-    if (e.target === $meta) return;
-    $meta.focus();
-    $meta.select();
-});
+        document.getElementById('pg-jump').addEventListener('click', function(e) {
+            if (e.target === $meta) return;
+            $meta.focus();
+            $meta.select();
+        });
 
         function goToPage(targetPg, opts) {
             opts = opts || {};
@@ -1232,18 +1449,6 @@ document.getElementById('pg-jump').addEventListener('click', function(e) {
                 $meta.max = totalPgs;
 
                 try { sessionStorage.setItem('chat-arc-pw', pw); } catch (e) {}
-
-                doc.getOutline().then(function(outline) {
-                    $bmList.innerHTML = '';
-                    if (outline && outline.length > 0) {
-                        $bmList.appendChild(buildBookmarksMenu(outline));
-                    } else {
-                        var empty = document.createElement('div');
-                        empty.className = 'bm-empty';
-                        empty.textContent = 'No built-in outline in this PDF';
-                        $bmList.appendChild(empty);
-                    }
-                });
 
                 var savedPos = readPos();
                 if (auto && savedPos) {
